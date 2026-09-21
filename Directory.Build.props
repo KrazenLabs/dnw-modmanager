@@ -1,0 +1,25 @@
+<Project>
+
+  <PropertyGroup>
+    <DnwManagerVersion>1.0.0</DnwManagerVersion>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <Deterministic>true</Deterministic>
+    <DebugType>embedded</DebugType>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <Version>$(DnwManagerVersion)</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>$(DnwManagerVersion).0</FileVersion>
+    <InformationalVersion>$(DnwManagerVersion)</InformationalVersion>
+    <Product>DnW Mod Manager</Product>
+    <Company>KrazenLabs</Company>
+    <Copyright>Copyright (c) KrazenLabs</Copyright>
+  </PropertyGroup>
+</Project>

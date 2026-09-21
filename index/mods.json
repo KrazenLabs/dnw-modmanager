@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "updatedUtc": "2026-09-16T00:00:00Z",
+  "_comment": [
+    "The official KazenLabs Mod repository.",
+    "",
+    "Anyone can publish a repository in this format.",
+    "A repository may set a top-level \"name\", shown next to its mods.",
+    "",
+    "Each entry:",
+    "  id           the mod's id: mod.json \"id\" for a DnW mod, the [BepInPlugin] GUID for a",
+    "               BepInEx plugin, or slug(author).slug(name) for a MelonLoader mod. This is what",
+    "               an installed copy is matched against, so it has to be exact.",
+    "  kind         dnw | bepinex | melon - decides where a downloaded package is installed.",
+    "  folder       optional; the folder name to install into when it differs from the DLL name.",
+    "  aliases      other ids or DLL file names this mod has shipped under, for matching an",
+    "               existing install that predates its current id.",
+    "  source       where releases come from:",
+    "                 {\"type\":\"github\", \"repo\":\"owner/name\", \"asset\":\"*.zip\"}",
+    "                 {\"type\":\"url\", \"url\":\"https://...\", \"version\":\"1.2.0\"}",
+    "                 {\"type\":\"none\"}  - listed, but installed by hand",
+    ""
+  ],
+  "loader": {
+    "name": "DnW Mod Loader",
+    "homepage": "https://github.com/KrazenLabs/dnw-modloader",
+    "source": {
+      "type": "github",
+      "repo": "KrazenLabs/dnw-modloader",
+      "asset": "DnWModLoader-*.zip"
+    }
+  },
+  "mods": [
+    {
+      "id": "kl.recolor",
+      "name": "Recolor",
+      "author": "KrazenLabs",
+      "description": "Lets you change the colors of the player kobold and the dragons.",
+      "kind": "dnw",
+      "folder": "Recolor",
+      "homepage": "https://www.krazenlabs.com",
+      "aliases": [
+        "Recolor.dll"
+      ],
+      "source": {
+        "type": "github",
+        "repo": "KrazenLabs/dnw-recolor-mod",
+        "asset": "*.zip"
+      }
+    },
+    {
+      "id": "kl.slapjump",
+      "name": "Slap Jump",
+      "author": "KrazenLabs",
+      "description": "Slap things so hard you can launch yourself!",
+      "kind": "dnw",
+      "folder": "SlapJump",
+      "homepage": "https://www.krazenlabs.com",
+      "aliases": [
+        "SlapJump.dll"
+      ],
+      "source": {
+        "type": "github",
+        "repo": "KrazenLabs/dnw-slapjump-mod",
+        "asset": "*.zip"
+      }
+    },
+    {
+      "id": "kl.koboldvision",
+      "name": "Kobold Vision",
+      "author": "KrazenLabs",
+      "description": "Press V to see every spot of dirt and soap you missed on the dragon.",
+      "kind": "dnw",
+      "folder": "KoboldVision",
+      "homepage": "https://www.krazenlabs.com",
+      "aliases": [
+        "KoboldVision.dll"
+      ],
+      "source": {
+        "type": "github",
+        "repo": "KrazenLabs/dnw-koboldvision-mod",
+        "asset": "*.zip"
+      }
+    },
+    {
+      "id": "kl.jukebox",
+      "name": "Jukebox",
+      "author": "KrazenLabs",
+      "description": "Play your own songs on the jukebox, with an optional disco mode that lights up the room to the beat.",
+      "kind": "dnw",
+      "folder": "Jukebox",
+      "homepage": "https://www.krazenlabs.com",
+      "aliases": [
+        "Jukebox.dll"
+      ],
+      "source": {
+        "type": "none"
+      }
+    },
+    {
+      "id": "kl.kaijufootsteps",
+      "name": "Kaiju Footsteps",
+      "author": "KrazenLabs",
+      "description": "Dragon footsteps shake the camera like a kaiju is walking by, with a separate strength per dragon.",
+      "kind": "dnw",
+      "folder": "KaijuFootsteps",
+      "homepage": "https://www.krazenlabs.com",
+      "aliases": [
+        "KaijuFootsteps.dll"
+      ],
+      "source": {
+        "type": "none"
+      }
+    },
+    {
+      "id": "kl.parkour",
+      "name": "Parkour",
+      "author": "KrazenLabs",
+      "description": "Sprint, double jump, run along walls and kick off them.",
+      "kind": "dnw",
+      "folder": "Parkour",
+      "homepage": "https://www.krazenlabs.com",
+      "aliases": [
+        "Parkour.dll"
+      ],
+      "source": {
+        "type": "none"
+      }
+    },
+    {
+      "id": "kl.weatherpicker",
+      "name": "Weather Picker",
+      "author": "KrazenLabs",
+      "description": "Choose the weather for every level: sunny, rainy or night.",
+      "kind": "dnw",
+      "folder": "WeatherPicker",
+      "homepage": "https://www.krazenlabs.com",
+      "aliases": [
+        "WeatherPicker.dll"
+      ],
+      "source": {
+        "type": "none"
+      }
+    }
+  ]
+}
