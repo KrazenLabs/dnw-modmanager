@@ -101,7 +101,9 @@ public sealed class AssemblyProbe : IDisposable
             if (!ReadMelon(definition, probed) && !ReadBepInEx(module, probed) && !ReadDnwMod(module, probed))
                 probed.Kind = ModKind.Library;
 
-            if (probed.Kind.IsRunnable() || probed.Kind is ModKind.BepInExPatcher or ModKind.MelonPlugin)
+            if (IsIl2CppBuild(module))
+                probed.Kind = ModKind.Il2CppBuild;
+            else if (probed.Kind.IsRunnable() || probed.Kind is ModKind.BepInExPatcher or ModKind.MelonPlugin)
                 CollectMissingReferences(module, probed);
         }
         catch (BadImageFormatException)
@@ -322,6 +324,14 @@ public sealed class AssemblyProbe : IDisposable
             }
         }
     }
+
+    private static bool IsIl2CppBuild(ModuleDefinition module)
+        => module.AssemblyReferences.Any(r => IsIl2CppAssembly(r.Name));
+
+    public static bool IsIl2CppAssembly(string name)
+        => name.StartsWith("Il2Cpp", StringComparison.OrdinalIgnoreCase)
+           || name.StartsWith("Unhollower", StringComparison.OrdinalIgnoreCase)
+           || name.Contains(".IL2CPP", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsFrameworkAssembly(string name)
         => name is "mscorlib" or "System" or "netstandard"

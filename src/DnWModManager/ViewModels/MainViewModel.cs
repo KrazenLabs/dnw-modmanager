@@ -801,7 +801,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         string names = string.Join(", ", report.Installed.Select(i => i.Split(" -> ")[0]));
         var unsupported = report.Unsupported.ToList();
         if (unsupported.Count > 0)
-            return "Installed " + names + " without unsupported" + UnsupportedParts(unsupported) + ", which the loader cannot run.";
+            return "Installed " + names + " without " + UnsupportedParts(unsupported) + ", which the loader cannot run.";
 
         int files = report.Written + report.Unchanged;
         return "Installed " + names + (files > 1 ? " (" + files + " files)." : ".");

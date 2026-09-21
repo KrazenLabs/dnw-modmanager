@@ -294,7 +294,7 @@ public sealed class PackageService : IDisposable
                 var item = new StagedItem { SourcePath = file, RelativePath = relative, Probe = probed };
 
                 if (probed.Kind is ModKind.LoaderRuntime) package.InjectorFiles.Add(relative);
-                else if (probed.Kind.IsRunnable() || probed.Kind is ModKind.BepInExPatcher or ModKind.MelonPlugin) package.Mods.Add(item);
+                else if (probed.Kind.IsRunnable() || probed.Kind.IsUnsupportedMod()) package.Mods.Add(item);
                 else package.Libraries.Add(item);
                 continue;
             }
@@ -312,7 +312,7 @@ public sealed class PackageService : IDisposable
 
     private static PackageLayout DetectLayout(StagedPackage package)
     {
-        string overlay = InstallPlanner.FindOverlayRoot(package.Root);
+        string overlay = InstallPlanner.FindOverlayRoot(package.Root, package, out _);
         if (overlay is not null && Directory.Exists(Path.Combine(overlay, "DnWModLoader"))) return PackageLayout.LoaderRelease;
         return overlay is null ? PackageLayout.ModFolder : PackageLayout.GameOverlay;
     }

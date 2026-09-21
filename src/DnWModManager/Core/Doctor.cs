@@ -554,12 +554,13 @@ public static class Doctor
         string reason = mod.Kind.UnsupportedReason();
         if (reason is null) return;
 
+        bool il2cpp = mod.Kind == ModKind.Il2CppBuild;
         Add(scan, mod, new Diagnostic
         {
-            Code = "mod.unsupported",
+            Code = il2cpp ? "mod.il2cpp" : "mod.unsupported",
             Severity = Severity.Warning,
-            Title = mod.Name + " is not yet supported",
-            Detail = reason + " Uses unsupported features.",
+            Title = il2cpp ? mod.Name + " is an IL2CPP build" : mod.Name + " is not supported",
+            Detail = il2cpp ? reason : reason + " Uses unsupported features.",
             Path = mod.AssemblyPath,
             Mod = mod,
             Repair = new Repair

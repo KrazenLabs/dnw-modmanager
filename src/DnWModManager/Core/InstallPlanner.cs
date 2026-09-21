@@ -41,6 +41,7 @@ public static class InstallPlanner
 
     private static readonly HashSet<string> BepInExStateFolders = new(StringComparer.OrdinalIgnoreCase) { "cache", "disabledPlugins" };
     private static readonly string[] GameFolders = { "Mods", "BepInEx", "UserLibs", "UserData", "Plugins", "MelonLoader", "DnWModLoader" };
+    private static readonly string[] BepInExSubfolders = { "plugins", "config", "patchers" };
 
     private static readonly HashSet<string> DocExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -64,16 +65,19 @@ public static class InstallPlanner
         foreach (var unsupported in package.Mods.Where(m => !m.Probe.Kind.IsRunnable()))
             plan.Skip(unsupported.RelativePath, SkipKind.Unsupported, unsupported.Probe.Kind.UnsupportedReason(), unsupported.Probe.Kind);
 
-        string overlayRoot = FindOverlayRoot(package.Root);
-        if (overlayRoot is not null) PlanOverlay(package, overlayRoot, catalog, plan);
+        string overlayRoot = FindOverlayRoot(package.Root, package, out bool insideBepInEx);
+        if (overlayRoot is not null) PlanOverlay(package, overlayRoot, catalog, plan, insideBepInEx);
         else PlanModFolders(package, install, catalog, plan);
 
         return plan;
     }
 
-    public static string FindOverlayRoot(string packageRoot)
+    public static string FindOverlayRoot(string packageRoot) => FindOverlayRoot(packageRoot, null, out _);
+
+    public static string FindOverlayRoot(string packageRoot, StagedPackage package, out bool insideBepInEx)
     {
-        if (HasGameFolder(packageRoot)) return packageRoot;
+        insideBepInEx = IsBepInExFolderLayout(packageRoot, package);
+        if (insideBepInEx || HasGameFolder(packageRoot)) return packageRoot;
 
         string[] directories, files;
         try
@@ -87,16 +91,34 @@ public static class InstallPlanner
         }
 
         bool onlyDocsBesideIt = files.All(IsExtra);
-        if (directories.Length == 1 && onlyDocsBesideIt && HasGameFolder(directories[0])) return directories[0];
+        if (directories.Length != 1 || !onlyDocsBesideIt) return null;
+
+        insideBepInEx = IsBepInExFolderLayout(directories[0], package);
+        if (insideBepInEx || HasGameFolder(directories[0])) return directories[0];
         return null;
     }
 
     private static bool HasGameFolder(string directory)
         => GameFolders.Any(name => Directory.Exists(Path.Combine(directory, name)));
 
-    private static void PlanOverlay(StagedPackage package, string overlayRoot, CatalogMod catalog, InstallPlan plan)
+    private static bool IsBepInExFolderLayout(string directory, StagedPackage package)
+    {
+        if (package is null) return false;
+        if (!BepInExSubfolders.Any(name => Directory.Exists(Path.Combine(directory, name)))) return false;
+        if (GameFolders.Any(name => !Is(name, "Plugins") && Directory.Exists(Path.Combine(directory, name)))) return false;
+
+        bool bepInEx = package.Mods.Any(m => m.Probe.Kind is ModKind.BepInExPlugin or ModKind.BepInExPatcher);
+        bool melon = package.Mods.Any(m => m.Probe.Kind is ModKind.MelonMod or ModKind.MelonPlugin);
+        return bepInEx && !melon;
+    }
+
+    private static void PlanOverlay(StagedPackage package, string overlayRoot, CatalogMod catalog, InstallPlan plan, bool insideBepInEx)
     {
         var byPath = IndexByPath(package);
+
+        if (!string.Equals(overlayRoot, package.Root, StringComparison.OrdinalIgnoreCase))
+            foreach (var beside in Directory.GetFiles(package.Root))
+                plan.Skip(Path.GetRelativePath(package.Root, beside), SkipKind.Extra, ExtraReason(beside));
 
         foreach (var file in Directory.GetFiles(overlayRoot, "*", SearchOption.AllDirectories))
         {
@@ -111,7 +133,7 @@ public static class InstallPlanner
                 continue;
             }
 
-            if (staged is not null && !staged.Probe.Kind.IsRunnable() && staged.Probe.Kind is ModKind.BepInExPatcher or ModKind.MelonPlugin)
+            if (staged is not null && staged.Probe.Kind.IsUnsupportedMod())
                 continue; // already recorded as unsupported
 
             if (parts.Length == 1)
@@ -124,6 +146,8 @@ public static class InstallPlanner
                     plan.Skip(fromPackage, SkipKind.Extra, "a loose file at the top of the package");
                 continue;
             }
+
+            if (insideBepInEx) parts = parts.Prepend("BepInEx").ToArray();
 
             var rejection = OverlayRejection(parts, fromPackage);
             if (rejection is not null)
