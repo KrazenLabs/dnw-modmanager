@@ -6,6 +6,7 @@ public static class Doctor
     {
         scan.Diagnostics.Clear();
 
+        CheckPermissions(scan);
         CheckLoader(scan);
         CheckRivalLoaders(scan);
         CheckCoreLibraries(scan);
@@ -18,6 +19,33 @@ public static class Doctor
             .ToList();
         scan.Diagnostics.Clear();
         scan.Diagnostics.AddRange(ordered);
+    }
+
+    private static void CheckPermissions(ScanResult scan)
+    {
+        if (scan.GameFolderAccess != FolderAccess.Denied) return;
+
+        scan.Diagnostics.Add(new Diagnostic
+        {
+            Code = "folder.permissions",
+            Severity = Severity.Error,
+            Title = "The game folder is write-protected",
+            Detail = "Mods cannot load or save their settings.",
+            Path = scan.Install.GameDirectory,
+            Repair = new Repair
+            {
+                Label = "Fix permissions",
+                Description = "Makes sure mods can access the game folder.",
+                Apply = FixPermissionsAsync,
+            },
+        });
+    }
+
+    private static async Task<string> FixPermissionsAsync(RepairContext context, CancellationToken cancel)
+    {
+        if (!await FolderPermissions.FixAsync(context.Install).ConfigureAwait(false))
+            throw new InvalidOperationException("Failed to grant Administrator permissions.");
+        return "Permissions set.";
     }
 
     private static void CheckLoader(ScanResult scan)

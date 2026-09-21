@@ -83,7 +83,7 @@ public sealed class PackageService : IDisposable
         _http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*"));
     }
 
-    public async Task<ModCatalog> FetchCatalogsAsync(IEnumerable<string> extraUrls, CancellationToken cancel)
+    public async Task<ModCatalog> FetchCatalogsAsync(IEnumerable<string> extraUrls, CatalogCache cache, CancellationToken cancel)
     {
         var urls = new List<(string Url, bool Official)> { (ModCatalog.DefaultUrl, true) };
         foreach (var url in extraUrls ?? Enumerable.Empty<string>())
@@ -93,11 +93,11 @@ public sealed class PackageService : IDisposable
             urls.Add((url.Trim(), false));
         }
 
-        var sources = await Task.WhenAll(urls.Select(u => FetchCatalogAsync(u.Url, u.Official, cancel))).ConfigureAwait(false);
+        var sources = await Task.WhenAll(urls.Select(u => FetchCatalogAsync(u.Url, u.Official, cache, cancel))).ConfigureAwait(false);
         return ModCatalog.Merge(sources);
     }
 
-    private async Task<CatalogSource> FetchCatalogAsync(string url, bool official, CancellationToken cancel)
+    private async Task<CatalogSource> FetchCatalogAsync(string url, bool official, CatalogCache cache, CancellationToken cancel)
     {
         try
         {
@@ -106,7 +106,9 @@ public sealed class PackageService : IDisposable
                 ? await File.ReadAllTextAsync(url, cancel).ConfigureAwait(false)
                 : await _http.GetStringAsync(url, cancel).ConfigureAwait(false);
 
-            return new CatalogSource { Url = url, IsOfficial = official, Catalog = ModCatalog.Parse(json, url, official) };
+            var catalog = ModCatalog.Parse(json, url, official);
+            cache?.Save(url, json);
+            return new CatalogSource { Url = url, IsOfficial = official, Catalog = catalog };
         }
         catch (OperationCanceledException) when (cancel.IsCancellationRequested)
         {
@@ -114,10 +116,25 @@ public sealed class PackageService : IDisposable
         }
         catch (Exception e)
         {
-            return official
-                ? new CatalogSource { Url = url, IsOfficial = true, Catalog = ModCatalog.BuiltIn(), Error = Explain(e, official), UsingBuiltInCopy = true }
-                : new CatalogSource { Url = url, IsOfficial = false, Error = Explain(e, official) };
+            var cached = CachedCatalog(cache, url, official, out var savedAt);
+            return new CatalogSource
+            {
+                Url = url,
+                IsOfficial = official,
+                Catalog = cached,
+                CachedAt = cached is null ? null : savedAt,
+                Error = Explain(e, official),
+            };
         }
+    }
+
+    private static ModCatalog CachedCatalog(CatalogCache cache, string url, bool official, out DateTime savedAt)
+    {
+        savedAt = default;
+        if (cache is null || !cache.TryLoad(url, out string json, out savedAt)) return null;
+
+        try { return ModCatalog.Parse(json, url, official); }
+        catch { return null; }
     }
 
     private static string Explain(Exception e, bool official) => e switch

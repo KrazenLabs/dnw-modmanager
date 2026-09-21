@@ -29,6 +29,9 @@ public sealed class ManagerSettings
     [JsonProperty("closeOnLaunch")]
     public bool CloseOnLaunch { get; set; }
 
+    [JsonProperty("permissionFixDeclinedFor", NullValueHandling = NullValueHandling.Ignore)]
+    public string PermissionFixDeclinedFor { get; set; }
+
     [JsonIgnore]
     public string Path { get; private set; }
 

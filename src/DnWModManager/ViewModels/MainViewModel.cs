@@ -22,9 +22,11 @@ public enum Page
 public sealed class MainViewModel : ObservableObject, IDisposable
 {
     private readonly PackageService _packages = new(App.UserAgent);
+    private readonly CatalogCache _catalogCache = CatalogCache.Default;
     private CancellationTokenSource _work;
     private bool _startupFinished;
     private bool _updatingManager;
+    private FolderAccess _gameFolderAccess;
 
     public ManagerSettings Settings { get; }
 
@@ -191,6 +193,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                                       && Settings.LaunchMode == LaunchMode.Steam
                                       && _steamOptions is { Readable: true, HasForceD3D11: false };
 
+    public bool IsElevated => Elevation.IsElevated;
+
     public ICommand RefreshCommand { get; }
     public ICommand FixEverythingCommand { get; }
     public ICommand FixOneCommand { get; }
@@ -218,9 +222,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         var located = await Task.Run(() =>
         {
-            if (!string.IsNullOrWhiteSpace(Settings.GameDirectory)
-                && GameInstall.LooksLikeGameDirectory(Settings.GameDirectory))
-                return GameInstall.At(Settings.GameDirectory);
+            foreach (var directory in new[] { App.GameDirectoryArgument, Settings.GameDirectory })
+                if (!string.IsNullOrWhiteSpace(directory) && GameInstall.LooksLikeGameDirectory(directory))
+                    return GameInstall.At(directory);
 
             return GameLocator.FindBest();
         });
@@ -236,12 +240,69 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
 
         SetInstall(located);
-        await RefreshAsync(Settings.CheckForUpdatesOnStart, reloadCatalogs: true, completed: UpdatedStatus);
+        string completed = await FixExistingInstallAsync() ?? UpdatedStatus;
+        await RefreshAsync(Settings.CheckForUpdatesOnStart, reloadCatalogs: true, completed: completed);
     }
 
     private static string UpdatedStatus => App.UpdatedFromVersion is null
         ? null
         : "Updated the mod manager from " + App.UpdatedFromVersion + " to " + App.Version + ".";
+
+    private const string PermissionsFixedStatus = "Fixed game folder permissions.";
+
+    private async Task<string> FixExistingInstallAsync()
+    {
+        var install = Install;
+        _gameFolderAccess = await Task.Run(() => FolderPermissions.Check(install));
+
+        bool hasModFiles = install.LoaderInstalled || Directory.Exists(install.ModsDirectory) || Directory.Exists(install.BepInExDirectory);
+        bool declined = string.Equals(Settings.PermissionFixDeclinedFor, install.GameDirectory, StringComparison.OrdinalIgnoreCase);
+        if (_gameFolderAccess != FolderAccess.Denied || !hasModFiles || declined) return null;
+
+        return await FixGameFolderAsync();
+    }
+
+    private async Task<string> EnsureWritableAsync()
+    {
+        if (_gameFolderAccess != FolderAccess.Denied) return null;
+
+        string status = await FixGameFolderAsync();
+        return status == PermissionsFixedStatus ? null : status;
+    }
+
+    private async Task<string> FixGameFolderAsync()
+    {
+        var install = Install;
+        bool wasBusy = Busy;
+        Busy = true;
+        Status = "Fixing game folder permissions...";
+        try
+        {
+            bool writable = await FolderPermissions.FixAsync(install);
+            Settings.PermissionFixDeclinedFor = writable ? null : install.GameDirectory;
+            Settings.Save();
+            if (!writable) return "Game folder permissions unchanged.";
+
+            _gameFolderAccess = FolderAccess.Writable;
+            return PermissionsFixedStatus;
+        }
+        catch (Exception e)
+        {
+            MessageBox.Show("Failed to change game folder permissions:" + Environment.NewLine + Environment.NewLine + e.Message,
+                "DnW Mod Manager", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return "Failed to fix game folder permissions.";
+        }
+        finally
+        {
+            Busy = wasBusy;
+        }
+    }
+
+    private async Task FixAfterErrorAsync()
+    {
+        string status = await FixGameFolderAsync();
+        await RefreshAsync(checkForUpdates: false, completed: status);
+    }
 
     private void SetInstall(GameInstall install)
     {
@@ -257,15 +318,16 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         if (Install is null) return;
 
         Busy = true;
-        Status = "Checking the game folder...";
+        Status = "Checking game folder...";
         try
         {
             var scan = await Task.Run(() => ModScanner.Scan(Install));
+            _gameFolderAccess = scan.GameFolderAccess;
 
             if (reloadCatalogs || Catalog.Sources.Count == 0)
             {
-                Status = "Loading the mod repositories...";
-                Catalog = await _packages.FetchCatalogsAsync(Settings.ExtraCatalogs, CancellationToken.None);
+                Status = "Loading mod repositories...";
+                Catalog = await _packages.FetchCatalogsAsync(Settings.ExtraCatalogs, _catalogCache, CancellationToken.None);
             }
 
             foreach (var mod in scan.Mods) mod.Catalog = Catalog.Match(mod);
@@ -282,7 +344,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception e)
         {
-            ReportError("Could not read the game folder", e);
+            ReportError("Could not read game folder", e);
         }
         finally
         {
@@ -330,7 +392,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private void RebuildCatalogList()
     {
         Available.Clear();
-        foreach (var entry in Catalog.Mods.OrderBy(m => m.Name ?? m.Id, StringComparer.OrdinalIgnoreCase))
+        foreach (var entry in Catalog.Mods.Where(m => m.IsReleased).OrderBy(m => m.Name ?? m.Id, StringComparer.OrdinalIgnoreCase))
         {
             var installed = Scan?.Mods.FirstOrDefault(m => ReferenceEquals(m.Catalog, entry));
             Available.Add(new CatalogItemViewModel(entry, installed));
@@ -369,9 +431,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             var lines = new List<string>();
             foreach (var source in Catalog.Sources.Where(s => s.Error is not null))
             {
-                lines.Add(source.UsingBuiltInCopy
-                    ? "The official repository could not be updated because " + source.Error + "."
-                    : source.Label + " could not be loaded: " + source.Error + ".");
+                string name = source.IsOfficial ? "The official repository" : source.Label;
+                lines.Add(source.CachedAt is not null
+                    ? name + " could not be updated because " + source.Error + "."
+                    : name + " could not be loaded: " + source.Error + ".");
             }
             return lines.Count == 0 ? null : string.Join(Environment.NewLine, lines);
         }
@@ -416,7 +479,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         await RefreshAsync(checkForUpdates: false, reloadCatalogs: true);
 
         var added = Catalog.Sources.FirstOrDefault(s => string.Equals(s.Url, url, StringComparison.OrdinalIgnoreCase));
-        int count = added?.Catalog?.Mods.Count ?? 0;
+        int count = added?.Catalog?.Mods.Count(m => m.IsReleased) ?? 0;
         Status = added?.Error is null
             ? "Added " + (added?.Label ?? url) + " with " + count + (count == 1 ? " mod." : " mods.")
             : "Added the repository, but it could not be loaded: " + added.Error + ".";
@@ -430,6 +493,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         Settings.Save();
         var stored = ExtraCatalogs.FirstOrDefault(u => string.Equals(u, row.Url, StringComparison.OrdinalIgnoreCase));
         if (stored is not null) ExtraCatalogs.Remove(stored);
+        _catalogCache.Remove(row.Url);
 
         await RefreshAsync(checkForUpdates: false, reloadCatalogs: true, completed: "Removed " + row.Label + ".");
     }
@@ -545,6 +609,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         string completed = null;
         try
         {
+            completed = await EnsureWritableAsync();
+            if (completed is not null) return;
+
             var runner = new RepairRunner(Install, _packages);
             var progress = new Progress<string>(message => Status = message);
 
@@ -657,6 +724,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
             if (GameLauncher.IsRunning() && !ConfirmGameRunning()) return;
 
+            completed = await EnsureWritableAsync();
+            if (completed is not null) return;
+
             Status = "Downloading loader " + release.Version + "...";
             var progress = new Progress<double>(fraction => Status = "Downloading loader " + release.Version + " (" + (int)(fraction * 100) + "%)...");
             string zip = await _packages.DownloadAsync(release.DownloadUrl, release.AssetName, progress, CancellationToken.None);
@@ -691,6 +761,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private async Task UpdateEverythingAsync()
     {
+        string blocked = await EnsureWritableAsync();
+        if (blocked is not null)
+        {
+            Status = blocked;
+            return;
+        }
+
         if (LoaderHasUpdate) await UpdateLoaderAsync();
 
         foreach (var row in Mods.Where(m => m.HasUpdate).ToList())
@@ -838,6 +915,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         {
             if (GameLauncher.IsRunning() && !ConfirmGameRunning()) return;
 
+            completed = await EnsureWritableAsync();
+            if (completed is not null) return;
+
             Status = what + "...";
             var progress = new Progress<double>(fraction => Status = what + " (" + (int)(fraction * 100) + "%)...");
             string zip = await _packages.DownloadAsync(release.DownloadUrl, release.AssetName, progress, CancellationToken.None);
@@ -886,6 +966,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         try
         {
             if (GameLauncher.IsRunning() && !ConfirmGameRunning()) return;
+
+            completed = await EnsureWritableAsync();
+            if (completed is not null) return;
 
             Status = "Reading " + Path.GetFileName(path) + "...";
             completed = await InstallStagedAsync(path, catalog: null, Path.GetFileName(path));
@@ -958,6 +1041,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         try
         {
             if (GameLauncher.IsRunning() && !ConfirmGameRunning()) return;
+
+            completed = await EnsureWritableAsync();
+            if (completed is not null) return;
 
             var quarantine = new Quarantine(Install);
             string moved = await Task.Run(() => Installer.Uninstall(row.Mod, Install, quarantine));
@@ -1039,7 +1125,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
 
         SetInstall(GameInstall.At(dialog.FolderName));
-        await RefreshAsync(checkForUpdates: true, reloadCatalogs: true);
+        string completed = await FixExistingInstallAsync();
+        await RefreshAsync(checkForUpdates: true, reloadCatalogs: true, completed: completed);
     }
 
     private void OpenFolder(object parameter)
@@ -1108,8 +1195,6 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    // -- helpers ----------------------------------------------------------------------------------------------------
-
     private static bool ConfirmGameRunning()
         => MessageBox.Show(
             "Drag'n Wash is currently running. Changing mod files while it is running may cause issues." + Environment.NewLine + Environment.NewLine
@@ -1121,14 +1206,19 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public void ReportError(string what, Exception e)
     {
-        string detail = e is UnauthorizedAccessException
-            ? e.Message + Environment.NewLine + Environment.NewLine
-              + "If the game is installed under Program Files, run the mod manager as administrator."
-            : e.Message;
-
-        MessageBox.Show(what + ":" + Environment.NewLine + Environment.NewLine + detail,
-            "DnW Mod Manager", MessageBoxButton.OK, MessageBoxImage.Warning);
+        string message = what + ":" + Environment.NewLine + Environment.NewLine + e.Message;
         Status = what + ".";
+
+        if (e is UnauthorizedAccessException && _gameFolderAccess == FolderAccess.Denied && !Busy)
+        {
+            var answer = MessageBox.Show(
+                message + Environment.NewLine + Environment.NewLine + "The game folder is write-protected. Fix its permissions?",
+                "DnW Mod Manager", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (answer == MessageBoxResult.Yes) _ = FixAfterErrorAsync();
+            return;
+        }
+
+        MessageBox.Show(message, "DnW Mod Manager", MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
     public void Dispose()

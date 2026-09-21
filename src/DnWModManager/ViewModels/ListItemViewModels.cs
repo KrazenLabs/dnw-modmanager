@@ -67,11 +67,7 @@ public sealed class CatalogItemViewModel : ObservableObject
 
     public string StateText => IsInstalled ? "Installed " + Installed.Version : null;
 
-    public bool CanInstall => !IsInstalled && Mod.Source?.CanUpdate == true;
-
-    public string CannotInstallReason => CanInstall || IsInstalled
-        ? null
-        : "This mod has no automatic download available. Download it manually and use \"Install from zip\".";
+    public bool CanInstall => !IsInstalled && Mod.IsReleased;
 }
 
 // Mod catalog entry
@@ -90,10 +86,10 @@ public sealed class CatalogListViewModel
     {
         get
         {
-            int count = Source.Catalog?.Mods.Count ?? 0;
+            int count = Source.Catalog?.Mods.Count(m => m.IsReleased) ?? 0;
             string mods = count + (count == 1 ? " mod" : " mods");
 
-            if (Source.UsingBuiltInCopy) return "Using the built-in copy (" + mods + ") because " + Source.Error;
+            if (Source.CachedAt is { } saved) return "Using the copy from " + saved.ToString("yyyy-MM-dd") + " (" + mods + ") because " + Source.Error;
             if (Source.Error is not null) return "Could not be loaded: " + Source.Error;
             return mods;
         }

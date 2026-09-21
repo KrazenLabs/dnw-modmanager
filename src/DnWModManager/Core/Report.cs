@@ -26,6 +26,13 @@ public static class Report
         text.AppendLine("Game");
         text.AppendLine("  Folder:  " + scan.Install.GameDirectory);
         text.AppendLine("  Source:  " + scan.Install.Source);
+        text.AppendLine("  Writable: " + scan.GameFolderAccess switch
+        {
+            FolderAccess.Writable => "yes",
+            FolderAccess.Denied => "NO",
+            _ => "unknown",
+        });
+        if (Elevation.IsElevated) text.AppendLine("  Mod Manager: running as administrator");
 
         var steam = GameLauncher.ReadSteamLaunchOptions();
         if (scan.Install.Source == InstallSource.Steam)
@@ -120,11 +127,13 @@ public static class Report
     private static void WriteLog(StringBuilder text, ScanResult scan)
     {
         var log = LogReader.ReadLatest(scan.Install);
-        text.AppendLine("Last run (" + (log.Exists ? Path.GetFileName(log.Path) + ", " + log.LastWrite : "no log yet") + ")");
+        text.AppendLine("Last run (" + (log.Exists ? LogName(scan.Install, log.Path) + ", " + log.LastWrite : "no log yet") + ")");
 
         if (!log.Exists)
         {
-            text.AppendLine("  The game has not been started with the loader yet.");
+            text.AppendLine(scan.GameFolderAccess == FolderAccess.Denied
+                ? "  The game folder is write-protected, so the loader may not have been able to write a log."
+                : "  The game has not been started with the loader yet.");
             return;
         }
 
@@ -141,6 +150,17 @@ public static class Report
     }
 
     private static string YesNo(bool value) => value ? "yes" : "NO";
+
+    private static string LogName(GameInstall install, string path)
+    {
+        if (string.Equals(Path.GetDirectoryName(path), install.ModsDirectory, StringComparison.OrdinalIgnoreCase))
+            return Path.GetFileName(path);
+
+        string profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        return !string.IsNullOrEmpty(profile) && path.StartsWith(profile + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+            ? "%USERPROFILE%" + path[profile.Length..]
+            : path;
+    }
 
     private static string Quote(string value)
         => string.IsNullOrEmpty(value) ? "(none set)" : "\"" + value + "\"";

@@ -18,7 +18,7 @@
     "  source       where releases come from:",
     "                 {\"type\":\"github\", \"repo\":\"owner/name\", \"asset\":\"*.zip\"}",
     "                 {\"type\":\"url\", \"url\":\"https://...\", \"version\":\"1.2.0\"}",
-    "                 {\"type\":\"none\"}  - listed, but installed by hand",
+    "                 {\"type\":\"none\"}  - no public release available",
     ""
   ],
   "loader": {

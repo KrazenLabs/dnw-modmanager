@@ -41,6 +41,25 @@
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="DnW Mod Manager"
                                    Style="{StaticResource Title}"/>
+                        <Border Background="{StaticResource SurfaceAlt}"
+                                CornerRadius="10"
+                                Padding="8,2"
+                                Margin="10,2,0,0"
+                                VerticalAlignment="Center"
+                                ToolTip="Mod Manager is running as administrator."
+                                Visibility="{Binding IsElevated, Converter={StaticResource NullToCollapsed}}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xEA18;"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           FontSize="10"
+                                           Foreground="{StaticResource TextMuted}"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,5,0"/>
+                                <TextBlock Text="Administrator"
+                                           Style="{StaticResource Muted}"
+                                           FontSize="11"/>
+                            </StackPanel>
+                        </Border>
                         <Button Style="{StaticResource PrimaryButton}"
                                 Padding="9,2"
                                 FontSize="11"
@@ -487,11 +506,6 @@
                                                            Style="{StaticResource BodyText}"
                                                            Foreground="{StaticResource TextMuted}"
                                                            Margin="0,6,0,0"/>
-                                                <TextBlock Text="{Binding CannotInstallReason}"
-                                                           Style="{StaticResource Muted}"
-                                                           Foreground="{StaticResource Warning}"
-                                                           Margin="0,6,0,0"
-                                                           Visibility="{Binding CannotInstallReason, Converter={StaticResource NullToCollapsed}}"/>
                                                 <Button Style="{StaticResource LinkButton}"
                                                         FontSize="11"
                                                         Content="Website"

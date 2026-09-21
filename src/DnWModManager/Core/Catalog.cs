@@ -44,6 +44,13 @@ public sealed class CatalogMod
     public string ListName { get; init; }
     public bool FromOfficialList { get; init; } = true;
 
+    public bool IsReleased => Source?.Type switch
+    {
+        "github" => !string.IsNullOrWhiteSpace(Source.Repo),
+        "url" => !string.IsNullOrWhiteSpace(Source.Url),
+        _ => false,
+    };
+
     public ModKind ExpectedKind => Kind?.ToLowerInvariant() switch
     {
         "bepinex" => ModKind.BepInExPlugin,
@@ -60,7 +67,7 @@ public sealed class CatalogSource
     public required bool IsOfficial { get; init; }
     public ModCatalog Catalog { get; init; }
     public string Error { get; init; }
-    public bool UsingBuiltInCopy { get; init; }
+    public DateTime? CachedAt { get; init; }
 
     public string Label => Catalog?.Name is { Length: > 0 } name ? name : ModCatalog.LabelFor(Url, IsOfficial);
 }
@@ -89,21 +96,6 @@ public sealed class ModCatalog
     public IReadOnlyList<CatalogSource> Sources { get; private init; } = Array.Empty<CatalogSource>();
 
     public static ModCatalog Empty() => new();
-    public static ModCatalog BuiltIn()
-    {
-        try
-        {
-            using var stream = typeof(ModCatalog).Assembly.GetManifestResourceStream("DnWModManager.mods.json");
-            if (stream is null) return Empty();
-
-            using var reader = new StreamReader(stream);
-            return Parse(reader.ReadToEnd(), DefaultUrl, isOfficial: true);
-        }
-        catch
-        {
-            return Empty();
-        }
-    }
 
     public static ModCatalog Parse(string json, string url, bool isOfficial)
     {

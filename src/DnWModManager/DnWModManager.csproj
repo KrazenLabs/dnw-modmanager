@@ -26,8 +26,4 @@
     <Resource Include="Assets\logo.png" />
   </ItemGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Include="..\..\index\mods.json" LogicalName="DnWModManager.mods.json" />
-  </ItemGroup>
-
 </Project>

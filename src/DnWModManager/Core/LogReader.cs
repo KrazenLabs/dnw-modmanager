@@ -99,12 +99,29 @@ public static class LogReader
 
     public static LogFile ReadLatest(GameInstall install)
     {
-        var current = Read(install.LogPath);
-        if (current.Exists && current.Entries.Count > 0) return current;
+        var folders = LogFolders(install).ToList();
 
-        var previous = Read(install.PreviousLogPath);
-        return previous.Exists ? previous : current;
+        var current = folders.Select(folder => Read(Path.Combine(folder, Path.GetFileName(install.LogPath)))).ToList();
+        var latest = Newest(current.Where(log => log.Exists && log.Entries.Count > 0));
+        if (latest is not null) return latest;
+
+        var previous = folders.Select(folder => Read(Path.Combine(folder, Path.GetFileName(install.PreviousLogPath))));
+        return Newest(previous.Where(log => log.Exists)) ?? current[0];
     }
+
+    private static IEnumerable<string> LogFolders(GameInstall install)
+    {
+        yield return install.ModsDirectory;
+
+        string persistent = install.PersistentDataDirectory;
+        if (persistent is not null) yield return persistent;
+
+        string local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (!string.IsNullOrEmpty(local)) yield return Path.Combine(local, "DnWModLoader");
+    }
+
+    private static LogFile Newest(IEnumerable<LogFile> logs)
+        => logs.OrderByDescending(log => log.LastWrite ?? DateTime.MinValue).FirstOrDefault();
 
     private static TimeSpan ParseTime(string text)
         => TimeSpan.TryParseExact(text, @"hh\:mm\:ss\.fff", CultureInfo.InvariantCulture, out var time)

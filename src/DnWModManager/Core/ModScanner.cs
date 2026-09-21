@@ -26,6 +26,7 @@ public sealed class ScanResult
     public required GameInstall Install { get; init; }
     public required LoaderState Loader { get; init; }
     public required LoaderConfigFile Config { get; init; }
+    public FolderAccess GameFolderAccess { get; init; }
 
     public List<InstalledMod> Mods { get; } = new();
     public List<RivalLoader> Rivals { get; } = new();
@@ -51,6 +52,7 @@ public static class ModScanner
             Install = install,
             Loader = loader,
             Config = LoaderConfigFile.Load(install.LoaderConfigPath),
+            GameFolderAccess = FolderPermissions.Check(install),
         };
 
         using var probe = new AssemblyProbe(ResolveDirectories(install));

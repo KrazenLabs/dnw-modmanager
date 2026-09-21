@@ -56,8 +56,7 @@ public sealed class RepairRunner
             catch (UnauthorizedAccessException e)
             {
                 Record(new RepairOutcome(diagnostic, false,
-                    "Access denied: " + e.Message + " Close the game, and if the game is in Program Files, "
-                    + "run the manager as administrator."));
+                    "Access denied: " + e.Message + " Close the game and try again."));
             }
             catch (IOException e) when (IsFileInUse(e))
             {
@@ -83,6 +82,7 @@ public sealed class RepairRunner
 
     private static int Phase(Diagnostic diagnostic) => diagnostic.Code switch
     {
+        "folder.permissions" => -1,
         "loader.missing" or "loader.proxy.missing" or "loader.runtime.missing" or "loader.runtime.incomplete" => 0,
         "doorstop.config.missing" or "doorstop.disabled" or "doorstop.foreign" => 1,
         var code when code.StartsWith("rival.", StringComparison.Ordinal) => 2,

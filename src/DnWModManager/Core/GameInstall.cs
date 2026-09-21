@@ -79,6 +79,26 @@ public sealed class GameInstall
     public string UserLibsDirectory => Path.Combine(GameDirectory, "UserLibs");
     public string MelonPreferencesPath => Path.Combine(UserDataDirectory, "MelonPreferences.cfg");
 
+    public string PersistentDataDirectory
+    {
+        get
+        {
+            try
+            {
+                string[] names = File.ReadAllLines(Path.Combine(DataDirectory, "app.info"));
+                if (names.Length < 2 || string.IsNullOrWhiteSpace(names[0]) || string.IsNullOrWhiteSpace(names[1])) return null;
+
+                string local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                string appData = Path.GetDirectoryName(local.TrimEnd(Path.DirectorySeparatorChar));
+                return string.IsNullOrEmpty(appData) ? null : Path.Combine(appData, "LocalLow", names[0].Trim(), names[1].Trim());
+            }
+            catch
+            {
+                return null;
+            }
+        }
+    }
+
     public bool Exists => LooksLikeGameDirectory(GameDirectory);
 
     public bool LoaderInstalled => File.Exists(DoorstopProxyPath) && File.Exists(LoaderAssemblyPath);

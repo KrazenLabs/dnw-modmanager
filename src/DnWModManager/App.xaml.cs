@@ -15,10 +15,25 @@ public partial class App : Application
 
     public static string UserAgent => "DnWModManager/" + Version;
 
+    public const string GameOption = "--game";
+    public const string SettingsOption = "--settings";
+
     public static string UpdatedFromVersion { get; private set; }
+    public static string GameDirectoryArgument { get; private set; }
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        string grantFolder = ArgumentAfter(e.Args, FolderPermissions.GrantArgument);
+        if (grantFolder is not null)
+        {
+            Environment.ExitCode = FolderPermissions.GrantFromCommandLine(grantFolder);
+            Shutdown(Environment.ExitCode);
+            return;
+        }
+
+        string settingsPath = ArgumentAfter(e.Args, SettingsOption);
+        if (!string.IsNullOrWhiteSpace(settingsPath)) ManagerSettings.OverridePath = settingsPath;
+
         // Show mod report and apply fixes
         if (HasFlag(e.Args, "report") || HasFlag(e.Args, "fix")
             || ArgumentAfter(e.Args, "--install") is not null || ArgumentAfter(e.Args, "--uninstall") is not null)
@@ -29,6 +44,7 @@ public partial class App : Application
         }
 
         UpdatedFromVersion = ArgumentAfter(e.Args, ManagerUpdater.UpdatedArgument);
+        GameDirectoryArgument = ArgumentAfter(e.Args, GameOption);
         _ = Task.Run(() => ManagerUpdater.RemoveLeftovers());
 
         DispatcherUnhandledException += OnUnhandledException;
@@ -42,7 +58,7 @@ public partial class App : Application
     {
         AttachConsole(AttachParentProcess);
 
-        string directory = ArgumentAfter(args, "--game") ?? ManagerSettings.Load().GameDirectory;
+        string directory = ArgumentAfter(args, GameOption) ?? ManagerSettings.Load().GameDirectory;
         var install = !string.IsNullOrWhiteSpace(directory) && GameInstall.LooksLikeGameDirectory(directory)
             ? GameInstall.At(directory)
             : GameLocator.FindBest();
