@@ -1,9 +1,17 @@
+![DnW Mod Manager](https://github.com/KrazenLabs/dnw-modmanager/blob/main/assets/logo.png)
+
 # DnW Mod Manager
+
+https://github.com/KrazenLabs/dnw-modmanager/blob/main/assets/logo.png
 
 A mod manager for **[Drag'n Wash](https://gatordragongames.itch.io/dragnwash)**, built for the
 [DnW Mod Loader](https://github.com/KrazenLabs/dnw-modloader) (but also supports other mods!).
 
 It allows you to install the mod loader and mods with one click, sets everything up automatically, checks your installation and can repair it if things are installed incorrectly. You can also install mods you downloaded from other sources and mod creators can create their own mod repositories that can be added for install and updates directly from the manager!
+
+![Main Screen](https://github.com/KrazenLabs/dnw-modmanager/blob/main/assets/main_screen.png)
+
+![Mod Installation](https://github.com/KrazenLabs/dnw-modmanager/blob/main/assets/mod_install.png)
 
 ## Install
 
