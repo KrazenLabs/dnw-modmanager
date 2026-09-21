@@ -20,7 +20,7 @@ It allows you to install the mod loader and mods with one click, sets everything
 
 It automatically finds the Drag'n Wash install (if installed via Steam of Itch.io App), but you can also manually set the install location.
 
-## Installing mods
+## Installing and updating mods
 
 Everything should be fairly self-explanatory within the application!
 

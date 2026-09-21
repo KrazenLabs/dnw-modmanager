@@ -41,6 +41,15 @@
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="DnW Mod Manager"
                                    Style="{StaticResource Title}"/>
+                        <Button Style="{StaticResource PrimaryButton}"
+                                Padding="9,2"
+                                FontSize="11"
+                                Margin="10,2,0,0"
+                                VerticalAlignment="Center"
+                                Content="{Binding ManagerUpdateText}"
+                                ToolTip="A new Mod Manager version is available. Click here to update."
+                                Visibility="{Binding ManagerHasUpdate, Converter={StaticResource NullToCollapsed}}"
+                                Command="{Binding UpdateManagerCommand}"/>
                         <Border Background="{StaticResource SurfaceAlt}"
                                 CornerRadius="10"
                                 Padding="8,2"
@@ -50,17 +59,15 @@
                                        Style="{StaticResource Muted}"
                                        FontSize="11"/>
                         </Border>
-                        <Border Background="{StaticResource Accent}"
-                                CornerRadius="10"
-                                Padding="8,2"
+                        <Button Style="{StaticResource PrimaryButton}"
+                                Padding="9,2"
+                                FontSize="11"
                                 Margin="6,2,0,0"
                                 VerticalAlignment="Center"
-                                Visibility="{Binding LoaderHasUpdate, Converter={StaticResource NullToCollapsed}}">
-                            <TextBlock Text="{Binding LoaderUpdateText}"
-                                       Foreground="White"
-                                       FontSize="11"
-                                       FontWeight="SemiBold"/>
-                        </Border>
+                                Content="{Binding LoaderUpdateText}"
+                                ToolTip="Update the Mod Loader"
+                                Visibility="{Binding LoaderHasUpdate, Converter={StaticResource NullToCollapsed}}"
+                                Command="{Binding UpdateLoaderCommand}"/>
                     </StackPanel>
 
                     <DockPanel Margin="0,3,0,0"
@@ -622,7 +629,7 @@
                                                    Style="{StaticResource BodyText}"/>
                                         <TextBlock Style="{StaticResource Muted}"
                                                    Margin="0,2,0,0"
-                                                   Text="Always adds -force-d3d11, which avoids the Direct3D 12 startup crash."/>
+                                                   Text="Always adds -force-d3d11, which avoids a Direct3D 12 startup crash."/>
                                     </StackPanel>
                                 </RadioButton>
 
@@ -636,7 +643,7 @@
                                                    Style="{StaticResource BodyText}"/>
                                         <TextBlock Style="{StaticResource Muted}"
                                                    Margin="0,2,0,0"
-                                                   Text="Uses your own Steam launch options, so -force-d3d11 has to be set there yourself."/>
+                                                   Text="Uses Steam launch options. Please set -force-d3d11 there yourself."/>
                                     </StackPanel>
                                 </RadioButton>
 
@@ -672,7 +679,7 @@
                                            Style="{StaticResource Heading}"/>
                                 <TextBlock Style="{StaticResource Muted}"
                                            Margin="0,4,0,0"
-                                           Text="Get mods shows every mod in these repositories. Add a repository someone shares with you to see their mods as well. Only add repositories from authors you trust: a repository decides where its mods are downloaded from."/>
+                                           Text="Only add repositories from authors you trust."/>
 
                                 <ItemsControl ItemsSource="{Binding CatalogLists}"
                                               Margin="0,12,0,0">
@@ -713,7 +720,7 @@
                                                             Command="{Binding DataContext.RemoveCatalogCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                             CommandParameter="{Binding}"/>
                                                     <TextBlock Grid.Column="1"
-                                                               Text="Always used"
+                                                               Text="Included by default"
                                                                Style="{StaticResource Muted}"
                                                                FontSize="11"
                                                                VerticalAlignment="Center"
@@ -770,12 +777,52 @@
                             <StackPanel>
                                 <TextBlock Text="Updates"
                                            Style="{StaticResource Heading}"/>
+                                <TextBlock Style="{StaticResource Muted}"
+                                           Margin="0,4,0,0"
+                                           Text="The manager can look for updates of the mod loader, installed mods and the manager itself."/>
                                 <CheckBox x:Name="CheckOnStart"
                                           Style="{StaticResource Switch}"
                                           Margin="0,12,0,0"
-                                          Content="Check for updates when the manager opens"
+                                          Content="Check for updates on startup"
                                           Checked="OnCheckOnStartChanged"
                                           Unchecked="OnCheckOnStartChanged"/>
+
+                                <Border Background="{StaticResource SurfaceAlt}"
+                                        CornerRadius="6"
+                                        Padding="12,9"
+                                        Margin="0,14,0,0"
+                                        Visibility="{Binding ManagerHasUpdate, Converter={StaticResource NullToCollapsed}}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,12,0">
+                                            <TextBlock Text="{Binding ManagerUpdateSummary}"
+                                                       Style="{StaticResource BodyText}"
+                                                       FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding ManagerUpdateNotes}"
+                                                       Style="{StaticResource Muted}"
+                                                       Margin="0,6,0,0"
+                                                       Visibility="{Binding HasManagerUpdateNotes, Converter={StaticResource NullToCollapsed}}"/>
+                                            <TextBlock Style="{StaticResource Muted}"
+                                                       Margin="0,6,0,0"
+                                                       Text="Updating will automatically restart the Mod Manager."/>
+                                            <Button Style="{StaticResource LinkButton}"
+                                                    FontSize="11"
+                                                    Content="Release page"
+                                                    Margin="0,6,0,0"
+                                                    ToolTip="{Binding ManagerUpdatePageUrl}"
+                                                    Command="{Binding OpenCommand}"
+                                                    CommandParameter="{Binding ManagerUpdatePageUrl}"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="1"
+                                                Style="{StaticResource PrimaryButton}"
+                                                VerticalAlignment="Top"
+                                                Content="Update now"
+                                                Command="{Binding UpdateManagerCommand}"/>
+                                    </Grid>
+                                </Border>
                             </StackPanel>
                         </Border>
 

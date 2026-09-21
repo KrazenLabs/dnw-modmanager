@@ -24,6 +24,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private readonly PackageService _packages = new(App.UserAgent);
     private CancellationTokenSource _work;
     private bool _startupFinished;
+    private bool _updatingManager;
 
     public ManagerSettings Settings { get; }
 
@@ -44,6 +45,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         InstallLoaderCommand = new AsyncRelayCommand(InstallLoaderAsync);
         UpdateModCommand = new AsyncRelayCommand(UpdateModAsync);
         UpdateEverythingCommand = new AsyncRelayCommand(UpdateEverythingAsync, () => UpdateCount > 0);
+        UpdateManagerCommand = new AsyncRelayCommand(UpdateManagerAsync, () => ManagerUpdate is not null && !_updatingManager);
         InstallFromFileCommand = new AsyncRelayCommand(InstallFromFileAsync);
         InstallFromFolderCommand = new AsyncRelayCommand(InstallFromFolderAsync);
         InstallCatalogCommand = new AsyncRelayCommand(InstallFromCatalogAsync);
@@ -136,6 +138,16 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public bool LoaderHasUpdate => LoaderUpdate is not null;
     public string LoaderUpdateText => LoaderUpdate is null ? null : "Update to " + LoaderUpdate.Version;
 
+    public AvailableUpdate ManagerUpdate { get; private set; }
+    public bool ManagerHasUpdate => ManagerUpdate is not null;
+    public string ManagerUpdateText => ManagerUpdate is null ? null : "Update manager to " + ManagerUpdate.Version;
+    public string ManagerUpdateSummary => ManagerUpdate is null
+        ? null
+        : "DnW Mod Manager " + ManagerUpdate.Version + " is available.";
+    public string ManagerUpdateNotes => Excerpt(ManagerUpdate?.Release.Notes, 8);
+    public bool HasManagerUpdateNotes => ManagerUpdateNotes is not null;
+    public string ManagerUpdatePageUrl => ManagerUpdate?.PageUrl;
+
     public int ErrorCount => Scan?.Diagnostics.Count(d => d.Severity == Severity.Error) ?? 0;
     public int WarningCount => Scan?.Diagnostics.Count(d => d.Severity == Severity.Warning) ?? 0;
     public int IssueCount => ErrorCount + WarningCount;
@@ -170,7 +182,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public bool CanEditLoaderConfig => Scan?.Config.CanWrite == true;
 
-    public int UpdateCount => Mods.Count(m => m.HasUpdate) + (LoaderHasUpdate ? 1 : 0);
+    public int UpdateCount => Mods.Count(m => m.HasUpdate) + (LoaderHasUpdate ? 1 : 0) + (ManagerHasUpdate ? 1 : 0);
     public bool HasUpdates => UpdateCount > 0;
 
     private SteamLaunchOptions _steamOptions;
@@ -187,6 +199,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public ICommand InstallLoaderCommand { get; }
     public ICommand UpdateModCommand { get; }
     public ICommand UpdateEverythingCommand { get; }
+    public ICommand UpdateManagerCommand { get; }
     public ICommand InstallFromFileCommand { get; }
     public ICommand InstallFromFolderCommand { get; }
     public ICommand InstallCatalogCommand { get; }
@@ -216,15 +229,19 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         if (located is null)
         {
-            Status = "";
+            Status = UpdatedStatus ?? "";
             RaiseHeadline();
             await ChangeGameFolderAsync();
             return;
         }
 
         SetInstall(located);
-        await RefreshAsync(Settings.CheckForUpdatesOnStart, reloadCatalogs: true);
+        await RefreshAsync(Settings.CheckForUpdatesOnStart, reloadCatalogs: true, completed: UpdatedStatus);
     }
+
+    private static string UpdatedStatus => App.UpdatedFromVersion is null
+        ? null
+        : "Updated the mod manager from " + App.UpdatedFromVersion + " to " + App.Version + ".";
 
     private void SetInstall(GameInstall install)
     {
@@ -297,6 +314,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                      nameof(GameDirectoryText), nameof(InstallSourceText), nameof(HasInstall),
                      nameof(LoaderVersionText), nameof(LoaderInstalled), nameof(LoaderMissing),
                      nameof(LoaderHasUpdate), nameof(LoaderUpdateText),
+                     nameof(ManagerHasUpdate), nameof(ManagerUpdateText), nameof(ManagerUpdateSummary),
+                     nameof(ManagerUpdateNotes), nameof(HasManagerUpdateNotes), nameof(ManagerUpdatePageUrl),
                      nameof(ErrorCount), nameof(WarningCount), nameof(IssueCount), nameof(RepairableCount),
                      nameof(HasIssues), nameof(IssueBadge), nameof(IssueBadgeBrush),
                      nameof(HealthSummary), nameof(HealthHint), nameof(ShowHealthCard),
@@ -571,6 +590,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         {
             var cancel = CancellationToken.None;
 
+            var managerRelease = await _packages.LatestReleaseAsync(Catalog.ManagerSource, cancel);
+            ManagerUpdate = managerRelease is not null && ModVersion.IsNewer(managerRelease.Version, App.Version)
+                ? new AvailableUpdate(App.Version, managerRelease)
+                : null;
+
             var loaderRelease = await _packages.LatestReleaseAsync(Catalog.LoaderSource, cancel);
             LoaderUpdate = loaderRelease is not null
                            && Scan.Loader.Version is not null
@@ -678,6 +702,107 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         await CheckUpdatesAsync();
         Status = IdleStatus;
+
+        if (ManagerHasUpdate) await UpdateManagerAsync();
+    }
+
+    private async Task UpdateManagerAsync()
+    {
+        var update = ManagerUpdate;
+        if (update is null || _updatingManager) return;
+
+        _updatingManager = true;
+        CommandManager.InvalidateRequerySuggested();
+        try
+        {
+            await InstallManagerReleaseAsync(update.Release);
+        }
+        finally
+        {
+            _updatingManager = false;
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
+
+    private async Task InstallManagerReleaseAsync(ReleaseInfo release)
+    {
+        if (string.IsNullOrEmpty(release.DownloadUrl))
+        {
+            OfferReleasePage("Release " + release.Version + " of the mod manager has no downloadable file.", release);
+            return;
+        }
+
+        if (!ConfirmManagerUpdate(release)) return;
+
+        Busy = true;
+        string download = null;
+        try
+        {
+            string what = "Downloading mod manager " + release.Version;
+            Status = what + "...";
+            var progress = new Progress<double>(fraction => Status = what + " (" + (int)(fraction * 100) + "%)...");
+            download = await _packages.DownloadAsync(release.DownloadUrl, release.AssetName, progress, CancellationToken.None);
+
+            Status = "Installing mod manager " + release.Version + "...";
+            await Task.Run(() => ManagerUpdater.Apply(ManagerUpdater.Prepare(download, App.Version), App.Version));
+
+            Status = "Reopening as version " + release.Version + "...";
+            Application.Current.Shutdown();
+        }
+        catch (Exception e)
+        {
+            Status = "The Mod Manager was not updated.";
+            OfferReleasePage("The Mod Manager could not update itself: " + ExplainUpdateFailure(e), release);
+        }
+        finally
+        {
+            Busy = false;
+            if (download is not null) DeleteQuietly(Path.GetDirectoryName(download));
+        }
+    }
+
+    private static bool ConfirmManagerUpdate(ReleaseInfo release)
+        => MessageBox.Show(
+            "Update the DnW Mod Manager from " + App.Version + " to " + release.Version + "?"
+            + Environment.NewLine + Environment.NewLine
+            + "The Mod Manager will automatically restart during the update.",
+            "Update Mod Manager", MessageBoxButton.OKCancel, MessageBoxImage.Question) == MessageBoxResult.OK;
+
+    private static string ExplainUpdateFailure(Exception e) => e is UnauthorizedAccessException
+        ? e.Message + " Could not update Mod Manager due to missing permissions. Please change the save location or run the Mod Manager as an administrator."
+        : e.Message;
+
+    private static void OfferReleasePage(string problem, ReleaseInfo release)
+    {
+        var answer = MessageBox.Show(
+            problem + Environment.NewLine + Environment.NewLine
+            + "Open the release page to download version " + release.Version + " manually?",
+            "Mod Manager update", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (answer != MessageBoxResult.Yes || string.IsNullOrWhiteSpace(release.PageUrl)) return;
+
+        try { Shell.OpenUrl(release.PageUrl); }
+        catch { }
+    }
+
+    private static void DeleteQuietly(string directory)
+    {
+        if (string.IsNullOrEmpty(directory)) return;
+        try { Directory.Delete(directory, recursive: true); }
+        catch { }
+    }
+
+    private static string Excerpt(string text, int maxLines)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+
+        var lines = text.Replace("\r\n", "\n").Split('\n')
+            .Select(line => line.Trim())
+            .Where(line => line.Length > 0)
+            .ToList();
+        if (lines.Count == 0) return null;
+
+        string excerpt = string.Join(Environment.NewLine, lines.Take(maxLines));
+        return lines.Count > maxLines ? excerpt + Environment.NewLine + "..." : excerpt;
     }
 
     private async Task InstallFromCatalogAsync(object parameter)
@@ -701,7 +826,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         if (string.IsNullOrEmpty(release.DownloadUrl))
         {
-            MessageBox.Show("No downloadable release was found. Install it manually "
+            MessageBox.Show("No downloadable release was found. Please install manually "
                             + "with \"Install from zip\".",
                 "DnW Mod Manager", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;

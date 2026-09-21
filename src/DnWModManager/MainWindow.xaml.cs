@@ -23,7 +23,7 @@ public partial class MainWindow : Window
         LoadSettings();
 
         ManagerVersionLabel.Text = "DnW Mod Manager " + App.Version
-                                  + "  ·  settings are kept in " + ManagerSettings.DefaultPath;
+                                  + "  ·  settings are saved in " + ManagerSettings.DefaultPath;
 
         await _model.StartAsync();
     }

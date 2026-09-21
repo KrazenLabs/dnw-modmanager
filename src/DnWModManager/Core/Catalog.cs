@@ -83,7 +83,8 @@ public sealed class ModCatalog
     public int SchemaVersion { get; private init; }
     public DateTimeOffset? UpdatedUtc { get; private init; }
     public string Name { get; private init; }
-    public ModSource LoaderSource { get; private init; } = new() { Type = "github", Repo = "KrazenLabs/dnw-modloader" };
+    public ModSource LoaderSource { get; private init; } = DefaultLoaderSource();
+    public ModSource ManagerSource { get; private init; } = DefaultManagerSource();
     public IReadOnlyList<CatalogMod> Mods { get; private init; } = Array.Empty<CatalogMod>();
     public IReadOnlyList<CatalogSource> Sources { get; private init; } = Array.Empty<CatalogSource>();
 
@@ -141,12 +142,20 @@ public sealed class ModCatalog
             SchemaVersion = (int?)root["schemaVersion"] ?? 1,
             UpdatedUtc = (DateTimeOffset?)root["updatedUtc"],
             Name = string.IsNullOrWhiteSpace(name) ? null : name.Trim(),
-            LoaderSource = root["loader"] is JObject loader
-                ? ModSource.From(loader["source"] as JObject ?? loader)
-                : new ModSource { Type = "github", Repo = "KrazenLabs/dnw-modloader" },
+            LoaderSource = SourceIn(root, "loader") ?? DefaultLoaderSource(),
+            ManagerSource = SourceIn(root, "manager") ?? DefaultManagerSource(),
             Mods = mods,
         };
     }
+
+    private static ModSource SourceIn(JObject root, string key)
+        => root[key] is JObject section ? ModSource.From(section["source"] as JObject ?? section) : null;
+
+    private static ModSource DefaultLoaderSource()
+        => new() { Type = "github", Repo = "KrazenLabs/dnw-modloader" };
+
+    private static ModSource DefaultManagerSource()
+        => new() { Type = "github", Repo = "KrazenLabs/dnw-modmanager", Asset = ManagerUpdater.ExecutableName };
 
     public static ModCatalog Merge(IReadOnlyList<CatalogSource> sources)
     {
@@ -166,7 +175,8 @@ public sealed class ModCatalog
             SchemaVersion = official?.SchemaVersion ?? 1,
             UpdatedUtc = official?.UpdatedUtc,
             Name = official?.Name,
-            LoaderSource = official?.LoaderSource ?? new ModSource { Type = "github", Repo = "KrazenLabs/dnw-modloader" },
+            LoaderSource = official?.LoaderSource ?? DefaultLoaderSource(),
+            ManagerSource = official?.ManagerSource ?? DefaultManagerSource(),
             Mods = mods,
             Sources = sources,
         };
@@ -174,7 +184,7 @@ public sealed class ModCatalog
 
     public static string LabelFor(string url, bool isOfficial)
     {
-        if (isOfficial) return "Official mod repository";
+        if (isOfficial) return "KrazenLabs mod repository";
         if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https") return uri.Host;
         try { return Path.GetFileName(url); }
         catch { return url; }

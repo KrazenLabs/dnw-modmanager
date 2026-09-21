@@ -30,6 +30,15 @@
       "asset": "DnWModLoader-*.zip"
     }
   },
+  "manager": {
+    "name": "DnW Mod Manager",
+    "homepage": "https://github.com/KrazenLabs/dnw-modmanager",
+    "source": {
+      "type": "github",
+      "repo": "KrazenLabs/dnw-modmanager",
+      "asset": "DnWModManager.exe"
+    }
+  },
   "mods": [
     {
       "id": "kl.recolor",

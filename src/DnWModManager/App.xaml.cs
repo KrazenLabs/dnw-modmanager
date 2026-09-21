@@ -15,6 +15,8 @@ public partial class App : Application
 
     public static string UserAgent => "DnWModManager/" + Version;
 
+    public static string UpdatedFromVersion { get; private set; }
+
     protected override void OnStartup(StartupEventArgs e)
     {
         // Show mod report and apply fixes
@@ -25,6 +27,9 @@ public partial class App : Application
             Shutdown(0);
             return;
         }
+
+        UpdatedFromVersion = ArgumentAfter(e.Args, ManagerUpdater.UpdatedArgument);
+        _ = Task.Run(() => ManagerUpdater.RemoveLeftovers());
 
         DispatcherUnhandledException += OnUnhandledException;
         base.OnStartup(e);
