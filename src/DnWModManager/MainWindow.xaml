@@ -167,6 +167,8 @@
                     <RadioButton Style="{StaticResource NavButton}"
                                  Content="Get mods"
                                  GroupName="nav"
+                                 Tag="{Binding NewModsBadge}"
+                                 Background="{StaticResource Accent}"
                                  IsChecked="{Binding CurrentPage, Converter={StaticResource Equals}, ConverterParameter=Browse}"/>
                     <RadioButton Style="{StaticResource NavButton}"
                                  Content="Log"
@@ -494,6 +496,17 @@
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Text="{Binding Name}"
                                                                Style="{StaticResource Heading}"/>
+                                                    <Border CornerRadius="9"
+                                                            Padding="7,1"
+                                                            Margin="9,2,0,0"
+                                                            VerticalAlignment="Center"
+                                                            Background="{StaticResource Accent}"
+                                                            Visibility="{Binding IsNew, Converter={StaticResource NullToCollapsed}}">
+                                                        <TextBlock Text="New"
+                                                                   FontSize="11"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="White"/>
+                                                    </Border>
                                                     <TextBlock Text="{Binding StateText}"
                                                                Style="{StaticResource Muted}"
                                                                Margin="8,2,0,0"

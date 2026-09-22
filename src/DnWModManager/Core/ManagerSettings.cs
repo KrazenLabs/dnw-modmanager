@@ -32,6 +32,9 @@ public sealed class ManagerSettings
     [JsonProperty("permissionFixDeclinedFor", NullValueHandling = NullValueHandling.Ignore)]
     public string PermissionFixDeclinedFor { get; set; }
 
+    [JsonProperty("seenMods", NullValueHandling = NullValueHandling.Ignore)]
+    public List<string> SeenMods { get; set; }
+
     [JsonIgnore]
     public string Path { get; private set; }
 

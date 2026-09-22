@@ -38,11 +38,14 @@ public sealed class CatalogItemViewModel : ObservableObject
 
     public InstalledMod Installed { get; }
 
-    public CatalogItemViewModel(CatalogMod mod, InstalledMod installed)
+    public CatalogItemViewModel(CatalogMod mod, InstalledMod installed, bool isNew)
     {
         Mod = mod;
         Installed = installed;
+        IsNew = isNew;
     }
+
+    public bool IsNew { get; }
 
     public string Name => Mod.Name ?? Mod.Id;
     public string Author => Mod.Author;

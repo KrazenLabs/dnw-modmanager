@@ -1,7 +1,7 @@
 <Project>
 
   <PropertyGroup>
-    <DnwManagerVersion>1.1.0</DnwManagerVersion>
+    <DnwManagerVersion>1.2.0</DnwManagerVersion>
   </PropertyGroup>
 
   <PropertyGroup>

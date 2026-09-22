@@ -27,12 +27,14 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private bool _startupFinished;
     private bool _updatingManager;
     private FolderAccess _gameFolderAccess;
+    private readonly NewMods _newMods;
 
     public ManagerSettings Settings { get; }
 
     public MainViewModel()
     {
         Settings = ManagerSettings.Load();
+        _newMods = new NewMods(Settings);
 
         LogView = CollectionViewSource.GetDefaultView(LogEntries);
         LogView.Filter = item => !_logProblemsOnly || item is LogEntry { Level: >= LogLevel.Warning };
@@ -78,6 +80,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         {
             // Only show issues page when there is stuff to report
             if (value == Page.Issues && !HasIssues) value = Page.Installed;
+            var previous = _currentPage;
             if (!Set(ref _currentPage, value)) return;
             foreach (var name in new[]
                      {
@@ -85,6 +88,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                          nameof(IsLogPage), nameof(IsSettingsPage),
                      })
                 Raise(name);
+
+            if (previous == Page.Browse) _newMods.PageClosed();
+            if (value == Page.Browse) RebuildCatalogList();
         }
     }
 
@@ -391,12 +397,21 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void RebuildCatalogList()
     {
+        var rows = Catalog.Mods
+            .Where(m => m.IsReleased)
+            .OrderBy(m => m.Name ?? m.Id, StringComparer.OrdinalIgnoreCase)
+            .Select(entry => (Entry: entry, Installed: Scan?.Mods.FirstOrDefault(m => ReferenceEquals(m.Catalog, entry))))
+            .ToList();
+
+        _newMods.Update(
+            rows.Select(r => r.Entry.Id),
+            rows.Where(r => r.Installed is not null).Select(r => r.Entry.Id),
+            officialLoaded: Catalog.Sources.Any(s => s.IsOfficial && s.Catalog is not null),
+            pageOpen: IsBrowsePage);
+
         Available.Clear();
-        foreach (var entry in Catalog.Mods.Where(m => m.IsReleased).OrderBy(m => m.Name ?? m.Id, StringComparer.OrdinalIgnoreCase))
-        {
-            var installed = Scan?.Mods.FirstOrDefault(m => ReferenceEquals(m.Catalog, entry));
-            Available.Add(new CatalogItemViewModel(entry, installed));
-        }
+        foreach (var (entry, installed) in rows)
+            Available.Add(new CatalogItemViewModel(entry, installed, _newMods.IsNew(entry.Id)));
 
         CatalogLists.Clear();
         foreach (var source in Catalog.Sources) CatalogLists.Add(new CatalogListViewModel(source));
@@ -404,7 +419,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         Raise(nameof(CatalogStatus));
         Raise(nameof(CatalogProblems));
         Raise(nameof(HasCatalogProblems));
+        Raise(nameof(NewModsBadge));
     }
+
+    public string NewModsBadge => _newMods.UnseenCount > 0 ? "New" : null;
 
     public ObservableCollection<CatalogListViewModel> CatalogLists { get; } = new();
 
