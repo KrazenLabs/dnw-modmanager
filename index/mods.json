@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedUtc": "2026-09-16T00:00:00Z",
+  "updatedUtc": "2026-09-22T00:00:00Z",
   "_comment": [
     "The official KazenLabs Mod repository.",
     "",
@@ -92,15 +92,15 @@
       }
     },
     {
-      "id": "kl.jukebox",
-      "name": "Jukebox",
+      "id": "kl.partytime",
+      "name": "PartyTime",
       "author": "KrazenLabs",
-      "description": "Play your own songs on the jukebox, with an optional disco mode that lights up the room to the beat.",
+      "description": "Play your own songs on the jukebox, and slap the PARTY button next to it to light up the room to the beat.",
       "kind": "dnw",
-      "folder": "Jukebox",
+      "folder": "PartyTime",
       "homepage": "https://www.krazenlabs.com",
       "aliases": [
-        "Jukebox.dll"
+        "PartyTime.dll"
       ],
       "source": {
         "type": "none"
@@ -125,7 +125,7 @@
       "id": "kl.parkour",
       "name": "Parkour",
       "author": "KrazenLabs",
-      "description": "Sprint, double jump, run along walls and kick off them.",
+      "description": "Sprint, double jump, wall runs with Titanfall-style movement.",
       "kind": "dnw",
       "folder": "Parkour",
       "homepage": "https://www.krazenlabs.com",
@@ -133,7 +133,9 @@
         "Parkour.dll"
       ],
       "source": {
-        "type": "none"
+        "type": "github",
+        "repo": "KrazenLabs/dnw-parkour-mod",
+        "asset": "*.zip"
       }
     },
     {
