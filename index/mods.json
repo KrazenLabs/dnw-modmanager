@@ -142,7 +142,7 @@
       "id": "kl.weatherpicker",
       "name": "Weather Picker",
       "author": "KrazenLabs",
-      "description": "Choose the weather for every level: sunny, rainy or night.",
+      "description": "Change the weather at any time.",
       "kind": "dnw",
       "folder": "WeatherPicker",
       "homepage": "https://www.krazenlabs.com",
@@ -150,7 +150,9 @@
         "WeatherPicker.dll"
       ],
       "source": {
-        "type": "none"
+        "type": "github",
+        "repo": "KrazenLabs/dnw-weatherpicker-mod",
+        "asset": "*.zip"
       }
     }
   ]
