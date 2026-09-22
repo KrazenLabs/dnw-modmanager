@@ -4,7 +4,19 @@ public enum InstallSource
 {
     Unknown,
     Steam,
-    Standalone,
+    ItchApp,
+    Manual,
+}
+
+public static class InstallSourceInfo
+{
+    public static string Label(this InstallSource source) => source switch
+    {
+        InstallSource.Steam => "Steam",
+        InstallSource.ItchApp => "itch.io app",
+        InstallSource.Manual => "Manual install",
+        _ => "Unknown source",
+    };
 }
 
 public sealed class GameInstall
@@ -32,18 +44,22 @@ public sealed class GameInstall
     {
         try
         {
+            var full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory));
             // Check if Steam version
-            if (File.Exists(Path.Combine(directory, "steam_appid.txt"))) return InstallSource.Steam;
-            var full = Path.GetFullPath(directory);
             if (full.Replace('/', '\\').Contains(@"\steamapps\common\", StringComparison.OrdinalIgnoreCase))
                 return InstallSource.Steam;
-            return InstallSource.Standalone;
+            if (HasItchReceipt(full) || HasItchReceipt(Path.GetDirectoryName(full)))
+                return InstallSource.ItchApp;
+            return InstallSource.Manual;
         }
         catch
         {
             return InstallSource.Unknown;
         }
     }
+
+    private static bool HasItchReceipt(string directory)
+        => !string.IsNullOrEmpty(directory) && File.Exists(Path.Combine(directory, ".itch", "receipt.json.gz"));
 
     public string ExePath => Path.Combine(GameDirectory, ExeName);
     public string DataDirectory => Path.Combine(GameDirectory, "DragNWash_Data");

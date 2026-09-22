@@ -53,7 +53,7 @@ Needs the .NET SDK 8 or 9.
 pwsh ./build.ps1
 ```
 
-Produces `release\DnWModManager-<version>.zip`
+Produces `release\DnWModManager.exe`
 
 ## Licence
 

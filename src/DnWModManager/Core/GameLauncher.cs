@@ -20,8 +20,11 @@ public static class GameLauncher
         if (!install.Exists)
             throw new FileNotFoundException("DragNWash.exe was not found in " + install.GameDirectory + ".");
 
-        return mode == LaunchMode.Steam ? LaunchViaSteam(install) : LaunchDirect(install, extraArguments);
+        return EffectiveMode(install, mode) == LaunchMode.Steam ? LaunchViaSteam(install) : LaunchDirect(install, extraArguments);
     }
+
+    public static LaunchMode EffectiveMode(GameInstall install, LaunchMode mode)
+        => mode == LaunchMode.Steam && install?.Source == InstallSource.Steam ? LaunchMode.Steam : LaunchMode.Direct;
 
     private static Process LaunchDirect(GameInstall install, string extraArguments)
     {

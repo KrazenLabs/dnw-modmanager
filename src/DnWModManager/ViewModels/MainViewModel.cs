@@ -120,12 +120,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public string GameDirectoryText => Install?.GameDirectory ?? "No game folder selected";
 
-    public string InstallSourceText => Install is null ? null : Install.Source switch
-    {
-        InstallSource.Steam => "Steam",
-        InstallSource.Standalone => "Standalone / itch.io",
-        _ => "Unknown source",
-    };
+    public string InstallSourceText => Install?.Source.Label();
 
     public bool HasInstall => Install is not null;
 
@@ -1108,7 +1103,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         try
         {
             GameLauncher.Launch(Install, Settings.LaunchMode, Settings.ExtraLaunchArguments);
-            Status = Settings.LaunchMode == LaunchMode.Steam
+            Status = GameLauncher.EffectiveMode(Install, Settings.LaunchMode) == LaunchMode.Steam
                 ? "Starting game through Steam."
                 : "Started the game with " + GameLauncher.ForceD3D11 + " enabled.";
 

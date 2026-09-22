@@ -423,6 +423,7 @@ public static class Doctor
             CheckModSupport(scan, mod);
             CheckModCompanions(scan, mod);
             CheckModReferences(scan, mod);
+            CheckModGameVersion(scan, mod);
             CheckModLoaderVersion(scan, mod);
         }
 
@@ -659,6 +660,24 @@ public static class Doctor
                 Path = mod.AssemblyPath,
                 Mod = mod,
             });
+    }
+
+    private static void CheckModGameVersion(ScanResult scan, InstalledMod mod)
+    {
+        var missing = mod.Probe?.MissingFromGame;
+        if (missing is null || missing.Count == 0 || !mod.Kind.IsRunnable()) return;
+
+        Add(scan, mod, new Diagnostic
+        {
+            Code = "mod.gameversion",
+            Severity = Severity.Warning,
+            Title = mod.Name + " is incompatible with the installed game version",
+            Detail = "Missing references: " + string.Join(", ", missing.Take(4))
+                     + (missing.Count > 4 ? " and " + (missing.Count - 4) + " more" : "") + "."
+                     + " Please update your game.",
+            Path = mod.AssemblyPath,
+            Mod = mod,
+        });
     }
 
     private static void CheckModLoaderVersion(ScanResult scan, InstalledMod mod)

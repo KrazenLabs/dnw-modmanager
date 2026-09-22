@@ -30,12 +30,12 @@ public static class GameLocator
             Consider(Path.Combine(library, "steamapps", "common", GameFolderName), InstallSource.Steam, "Steam library " + library);
 
         foreach (var directory in ItchInstalls())
-            Consider(directory, InstallSource.Standalone, "itch.io app");
+            Consider(directory, InstallSource.ItchApp, "itch.io app");
 
         foreach (var root in StandaloneRoots())
         {
-            Consider(Path.Combine(root, GameFolderName), InstallSource.Standalone, root);
-            Consider(Path.Combine(root, "DragNWash"), InstallSource.Standalone, root);
+            Consider(Path.Combine(root, GameFolderName), InstallSource.Manual, root);
+            Consider(Path.Combine(root, "DragNWash"), InstallSource.Manual, root);
         }
 
         return found;

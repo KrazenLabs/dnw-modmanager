@@ -12,20 +12,32 @@ public static class Report
         text.AppendLine("Generated " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
         text.AppendLine();
 
-        WriteInstall(text, scan);
+        var log = LogReader.ReadLatest(scan.Install);
+
+        WriteInstall(text, scan, log);
         WriteLoader(text, scan);
         WriteMods(text, scan);
         WriteIssues(text, scan);
-        WriteLog(text, scan);
+        WriteLog(text, scan, log);
 
         return text.ToString();
     }
 
-    private static void WriteInstall(StringBuilder text, ScanResult scan)
+    private static void WriteInstall(StringBuilder text, ScanResult scan, LogReader.LogFile log)
     {
+        string version = GameVersion.FromGameFiles(scan.Install);
+        string lastRun = GameVersion.FromLog(log);
+
         text.AppendLine("Game");
         text.AppendLine("  Folder:  " + scan.Install.GameDirectory);
-        text.AppendLine("  Source:  " + scan.Install.Source);
+        text.AppendLine("  Source:  " + scan.Install.Source.Label());
+        text.AppendLine("  Version: " + (version, lastRun) switch
+        {
+            (null, null) => "unknown",
+            (null, _) => lastRun + " (last run)",
+            _ when lastRun is not null && lastRun != version => version + " (last run: " + lastRun + ")",
+            _ => version,
+        });
         text.AppendLine("  Writable: " + scan.GameFolderAccess switch
         {
             FolderAccess.Writable => "yes",
@@ -93,6 +105,9 @@ public static class Report
 
             if (mod.Probe?.MissingReferences.Count > 0)
                 text.AppendLine("      missing: " + string.Join(", ", mod.Probe.MissingReferences));
+            if (mod.Probe?.MissingFromGame.Count > 0)
+                text.AppendLine("      game lacks: " + string.Join(", ", mod.Probe.MissingFromGame.Take(12))
+                                + (mod.Probe.MissingFromGame.Count > 12 ? " and " + (mod.Probe.MissingFromGame.Count - 12) + " more" : ""));
             if (mod.Probe?.ReadError is not null)
                 text.AppendLine("      note:  " + mod.Probe.ReadError);
             foreach (var companion in mod.Companions.Where(c => c.Kind == ModKind.LoaderRuntime))
@@ -124,9 +139,8 @@ public static class Report
         text.AppendLine();
     }
 
-    private static void WriteLog(StringBuilder text, ScanResult scan)
+    private static void WriteLog(StringBuilder text, ScanResult scan, LogReader.LogFile log)
     {
-        var log = LogReader.ReadLatest(scan.Install);
         text.AppendLine("Last run (" + (log.Exists ? LogName(scan.Install, log.Path) + ", " + log.LastWrite : "no log yet") + ")");
 
         if (!log.Exists)

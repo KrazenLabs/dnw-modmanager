@@ -55,7 +55,8 @@ public static class ModScanner
             GameFolderAccess = FolderPermissions.Check(install),
         };
 
-        using var probe = new AssemblyProbe(ResolveDirectories(install));
+        using var gameApi = new GameApi(install.ManagedDirectory);
+        using var probe = new AssemblyProbe(ResolveDirectories(install)) { GameApi = gameApi };
 
         ScanModsFolder(install, probe, result);
         ScanDirectoryTree(install, probe, result, install.BepInExPluginsDirectory, ModLocation.BepInExPlugins);

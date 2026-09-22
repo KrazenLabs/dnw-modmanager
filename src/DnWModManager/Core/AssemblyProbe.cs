@@ -19,6 +19,7 @@ public sealed class ProbedAssembly
     public string EntryType { get; set; }
     public List<string> Dependencies { get; } = new();
     public List<string> MissingReferences { get; } = new();
+    public List<string> MissingFromGame { get; } = new();
     // Assembly runtime dll or mod
     public List<string> References { get; } = new();
     public string ReadError { get; set; }
@@ -46,6 +47,8 @@ public sealed class AssemblyProbe : IDisposable
 
     private readonly DefaultAssemblyResolver _resolver = new();
     private readonly List<string> _searchDirectories = new();
+
+    public GameApi GameApi { get; init; }
 
     public AssemblyProbe(IEnumerable<string> searchDirectories)
     {
@@ -105,6 +108,9 @@ public sealed class AssemblyProbe : IDisposable
                 probed.Kind = ModKind.Il2CppBuild;
             else if (probed.Kind.IsRunnable() || probed.Kind is ModKind.BepInExPatcher or ModKind.MelonPlugin)
                 CollectMissingReferences(module, probed);
+
+            if (probed.Kind.IsRunnable() && GameApi is not null)
+                CollectMissingFromGame(module, probed);
         }
         catch (BadImageFormatException)
         {
@@ -322,6 +328,19 @@ public sealed class AssemblyProbe : IDisposable
             {
                 // A resolver failure is not evidence the reference is missing
             }
+        }
+    }
+
+    // Check for missing assemblies (likely due to mismatching game version)
+    private void CollectMissingFromGame(ModuleDefinition module, ProbedAssembly probed)
+    {
+        try
+        {
+            probed.MissingFromGame.AddRange(GameApi.FindMissing(module));
+        }
+        catch (Exception)
+        {
+            probed.MissingFromGame.Clear();
         }
     }
 
