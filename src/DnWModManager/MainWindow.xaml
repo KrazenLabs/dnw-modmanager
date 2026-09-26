@@ -320,6 +320,91 @@
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
 
+                                                <ItemsControl ItemsSource="{Binding ResourceFolders}"
+                                                              Margin="0,8,12,0"
+                                                              Visibility="{Binding HasResourceFolders, Converter={StaticResource NullToCollapsed}}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Grid Margin="0,0,0,4"
+                                                                  AllowDrop="True"
+                                                                  DragEnter="OnResourceDragOver"
+                                                                  DragOver="OnResourceDragOver"
+                                                                  DragLeave="OnResourceDragLeave"
+                                                                  Drop="OnResourceDrop">
+                                                                <Rectangle RadiusX="6"
+                                                                           RadiusY="6"
+                                                                           Fill="{StaticResource SurfaceAlt}"
+                                                                           StrokeThickness="1"
+                                                                           StrokeDashArray="4 3">
+                                                                    <Rectangle.Style>
+                                                                        <Style TargetType="Rectangle">
+                                                                            <Setter Property="Stroke"
+                                                                                    Value="{StaticResource TextFaint}"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsDropTarget}"
+                                                                                             Value="True">
+                                                                                    <Setter Property="Stroke"
+                                                                                            Value="{StaticResource Accent}"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Rectangle.Style>
+                                                                </Rectangle>
+                                                                <Grid Margin="10,6">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="Auto"/>
+                                                                        <ColumnDefinition Width="Auto"/>
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <StackPanel VerticalAlignment="Center"
+                                                                                Margin="0,0,16,0">
+                                                                        <TextBlock Style="{StaticResource BodyText}">
+                                                                            <Run Text="{Binding Name, Mode=OneWay}"
+                                                                                 FontWeight="SemiBold"/><Run Text="{Binding Description, Mode=OneWay, StringFormat='{}  &#183;  {0}', TargetNullValue=''}"
+                                                                                                             Foreground="{StaticResource TextMuted}"/>
+                                                                        </TextBlock>
+                                                                        <TextBlock Style="{StaticResource Muted}"
+                                                                                   Margin="0,2,0,0">
+                                                                            <Run Text="Drag and drop "/><Run Text="{Binding DropTypes, Mode=OneWay}"
+                                                                                                             Foreground="{StaticResource Text}"
+                                                                                                             FontWeight="SemiBold"/><Run Text=" or folders here"/>
+                                                                        </TextBlock>
+                                                                    </StackPanel>
+                                                                    <TextBlock Grid.Column="1"
+                                                                               Text="{Binding CountText}"
+                                                                               Style="{StaticResource Muted}"
+                                                                               VerticalAlignment="Center"
+                                                                               Margin="0,0,12,0"/>
+                                                                    <StackPanel Grid.Column="2"
+                                                                                Orientation="Horizontal"
+                                                                                VerticalAlignment="Center">
+                                                                        <Button Style="{StaticResource SecondaryButton}"
+                                                                                Padding="10,4"
+                                                                                FontSize="12"
+                                                                                Content="Add files..."
+                                                                                Command="{Binding DataContext.AddResourceFilesCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                CommandParameter="{Binding}"/>
+                                                                        <Button Style="{StaticResource SecondaryButton}"
+                                                                                Padding="10,4"
+                                                                                FontSize="12"
+                                                                                Margin="6,0,0,0"
+                                                                                Content="Add folder..."
+                                                                                Command="{Binding DataContext.AddResourceFolderCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                CommandParameter="{Binding}"/>
+                                                                        <Button Style="{StaticResource SecondaryButton}"
+                                                                                Padding="10,4"
+                                                                                FontSize="12"
+                                                                                Margin="6,0,0,0"
+                                                                                Content="Open folder"
+                                                                                Command="{Binding DataContext.OpenResourceFolderCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                CommandParameter="{Binding}"/>
+                                                                    </StackPanel>
+                                                                </Grid>
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+
                                                 <StackPanel Orientation="Horizontal"
                                                             Margin="0,7,0,0">
                                                     <Button Style="{StaticResource PathLink}"

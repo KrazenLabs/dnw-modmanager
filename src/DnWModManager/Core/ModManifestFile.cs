@@ -27,6 +27,7 @@ public sealed class ModManifestFile
     public IReadOnlyList<ManifestDependency> Dependencies { get; private init; } = Array.Empty<ManifestDependency>();
     public IReadOnlyList<string> LoadAfter { get; private init; } = Array.Empty<string>();
     public IReadOnlyList<string> LoadBefore { get; private init; } = Array.Empty<string>();
+    public IReadOnlyList<ResourceFolderSpec> Resources { get; private init; } = Array.Empty<ResourceFolderSpec>();
 
     public string ParseError { get; private init; }
 
@@ -69,6 +70,7 @@ public sealed class ModManifestFile
             Dependencies = ReadDependencies(root),
             LoadAfter = ReadStringArray(root, "loadAfter"),
             LoadBefore = ReadStringArray(root, "loadBefore"),
+            Resources = ResourceFolderSpec.Read(root),
         };
     }
 

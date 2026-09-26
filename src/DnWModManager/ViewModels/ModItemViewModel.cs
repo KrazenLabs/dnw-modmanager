@@ -13,7 +13,11 @@ public sealed class ModItemViewModel : ObservableObject
     {
         _main = main;
         Mod = mod;
+        ResourceFolders = ResourceFolder.ForMod(mod).Select(folder => new ResourceFolderViewModel(mod, folder)).ToList();
     }
+
+    public IReadOnlyList<ResourceFolderViewModel> ResourceFolders { get; }
+    public bool HasResourceFolders => ResourceFolders.Count > 0;
 
     public string Name => Mod.Name;
     public string Id => Mod.Id;

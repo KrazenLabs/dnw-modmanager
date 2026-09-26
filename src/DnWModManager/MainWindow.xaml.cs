@@ -81,4 +81,26 @@ public partial class MainWindow : Window
         _model.Settings.ShowSafetyWarnings = ShowSafetyWarnings.IsChecked == true;
         _model.Settings.Save();
     }
+
+    private void OnResourceDragOver(object sender, DragEventArgs e)
+    {
+        bool accept = e.Data.GetDataPresent(DataFormats.FileDrop) && _model.NotBusy;
+        e.Effects = accept ? DragDropEffects.Copy : DragDropEffects.None;
+        if ((sender as FrameworkElement)?.DataContext is ResourceFolderViewModel target) target.IsDropTarget = accept;
+        e.Handled = true;
+    }
+
+    private void OnResourceDragLeave(object sender, DragEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is ResourceFolderViewModel target) target.IsDropTarget = false;
+    }
+
+    private async void OnResourceDrop(object sender, DragEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not ResourceFolderViewModel target) return;
+        target.IsDropTarget = false;
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths) return;
+        e.Handled = true;
+        await _model.ImportResourcesAsync(target, paths);
+    }
 }

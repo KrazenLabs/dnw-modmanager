@@ -61,6 +61,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         GoToCommand = new RelayCommand(target => CurrentPage = Enum.Parse<Page>(target.ToString()!));
         AddCatalogCommand = new AsyncRelayCommand(AddCatalogAsync);
         RemoveCatalogCommand = new AsyncRelayCommand(RemoveCatalogAsync);
+        AddResourceFilesCommand = new AsyncRelayCommand(AddResourceFilesAsync, _ => NotBusy);
+        AddResourceFolderCommand = new AsyncRelayCommand(AddResourceFolderAsync, _ => NotBusy);
+        OpenResourceFolderCommand = new RelayCommand(OpenResourceFolder);
     }
 
     public GameInstall Install { get; private set; }
@@ -216,6 +219,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public ICommand GoToCommand { get; }
     public ICommand AddCatalogCommand { get; }
     public ICommand RemoveCatalogCommand { get; }
+    public ICommand AddResourceFilesCommand { get; }
+    public ICommand AddResourceFolderCommand { get; }
+    public ICommand OpenResourceFolderCommand { get; }
 
     public async Task StartAsync()
     {
@@ -1162,6 +1168,84 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         if (!Directory.Exists(path))
         {
             MessageBox.Show(missing, "DnW Mod Manager", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        try
+        {
+            Shell.OpenFolder(path);
+        }
+        catch (Exception e)
+        {
+            ReportError("Could not open " + path, e);
+        }
+    }
+
+    private async Task AddResourceFilesAsync(object parameter)
+    {
+        if (parameter is not ResourceFolderViewModel target) return;
+        var dialog = new OpenFileDialog
+        {
+            Title = "Add files to " + target.Name,
+            Filter = target.Folder.DialogFilter,
+            Multiselect = true,
+            CheckFileExists = true,
+        };
+        if (dialog.ShowDialog() != true) return;
+
+        await ImportResourcesAsync(target, dialog.FileNames);
+    }
+
+    private async Task AddResourceFolderAsync(object parameter)
+    {
+        if (parameter is not ResourceFolderViewModel target) return;
+        var dialog = new OpenFolderDialog { Title = "Add folders to " + target.Name, Multiselect = true };
+        if (dialog.ShowDialog() != true) return;
+
+        await ImportResourcesAsync(target, dialog.FolderNames);
+    }
+
+    public async Task ImportResourcesAsync(ResourceFolderViewModel target, IReadOnlyCollection<string> paths)
+    {
+        if (target is null || paths is null || paths.Count == 0 || Busy || Install is null) return;
+
+        string blocked = await EnsureWritableAsync();
+        if (blocked is not null)
+        {
+            Status = blocked;
+            return;
+        }
+
+        Busy = true;
+        try
+        {
+            Status = "Adding files to " + target.Name + "...";
+            var result = await Task.Run(() => target.Folder.Import(paths));
+            string line = target.Name + " of " + target.ModName + ": " + target.Folder.Describe(result);
+            if (result.Failed > 0) ManagerLog.Warning(Install, line);
+            else ManagerLog.Info(Install, line);
+            if (result.Added.Count > 0) ManagerLog.Info(Install, "Added " + ManagerLog.List(result.Added.Select(Install.Relative)));
+            target.Recount();
+            Status = line;
+        }
+        catch (Exception e)
+        {
+            ReportError("Could not import files to " + target.Name, e);
+        }
+        finally
+        {
+            Busy = false;
+        }
+    }
+
+    private void OpenResourceFolder(object parameter)
+    {
+        if (parameter is not ResourceFolderViewModel target) return;
+        string path = target.Folder.FullPath;
+        if (!target.Folder.EnsureExists(out string error))
+        {
+            MessageBox.Show("Could not open " + path + ":" + Environment.NewLine + Environment.NewLine + error,
+                "DnW Mod Manager", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
