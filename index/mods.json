@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedUtc": "2026-09-22T00:00:00Z",
+  "updatedUtc": "2026-09-26T00:00:00Z",
   "_comment": [
     "The official KazenLabs Mod repository.",
     "",
@@ -47,7 +47,7 @@
       "description": "Lets you change the colors of the player kobold and the dragons.",
       "kind": "dnw",
       "folder": "Recolor",
-      "homepage": "https://www.krazenlabs.com",
+      "homepage": "https://github.com/KrazenLabs/dnw-recolor-mod",
       "aliases": [
         "Recolor.dll"
       ],
@@ -64,7 +64,7 @@
       "description": "Slap things so hard you can launch yourself!",
       "kind": "dnw",
       "folder": "SlapJump",
-      "homepage": "https://www.krazenlabs.com",
+      "homepage": "https://github.com/KrazenLabs/dnw-slapjump-mod",
       "aliases": [
         "SlapJump.dll"
       ],
@@ -81,7 +81,7 @@
       "description": "Press V to see every spot of dirt and soap you missed on the dragon.",
       "kind": "dnw",
       "folder": "KoboldVision",
-      "homepage": "https://www.krazenlabs.com",
+      "homepage": "https://github.com/KrazenLabs/dnw-koboldvision-mod",
       "aliases": [
         "KoboldVision.dll"
       ],
@@ -95,15 +95,17 @@
       "id": "kl.partytime",
       "name": "PartyTime",
       "author": "KrazenLabs",
-      "description": "Play your own songs on the jukebox, and slap the PARTY button next to it to light up the room to the beat.",
+      "description": "Play your own songs on the jukebox and slap the PARTY button next to it for PARTY TIME!",
       "kind": "dnw",
       "folder": "PartyTime",
-      "homepage": "https://www.krazenlabs.com",
+      "homepage": "https://github.com/KrazenLabs/dnw-partytime-mod",
       "aliases": [
         "PartyTime.dll"
       ],
       "source": {
-        "type": "none"
+        "type": "github",
+        "repo": "KrazenLabs/dnw-partytime-mod",
+        "asset": "*.zip"
       }
     },
     {
@@ -128,7 +130,7 @@
       "description": "Sprint, double jump, wall runs with Titanfall-style movement.",
       "kind": "dnw",
       "folder": "Parkour",
-      "homepage": "https://www.krazenlabs.com",
+      "homepage": "https://github.com/KrazenLabs/dnw-parkour-mod",
       "aliases": [
         "Parkour.dll"
       ],
@@ -145,7 +147,7 @@
       "description": "Change the weather at any time.",
       "kind": "dnw",
       "folder": "WeatherPicker",
-      "homepage": "https://www.krazenlabs.com",
+      "homepage": "https://github.com/KrazenLabs/dnw-weatherpicker-mod",
       "aliases": [
         "WeatherPicker.dll"
       ],
