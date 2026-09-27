@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 
 namespace DnWModManager.Core;
@@ -21,6 +22,7 @@ public static class DesktopMenu
 
     private const string IconSize = "256x256";
     private const string TargetKey = "TryExec=";
+    private const string ChecksumKey = "X-DnWModManager-Checksum=";
 
     public static string Executable { get; set; } = ManagerUpdater.ExecutablePath;
 
@@ -58,7 +60,7 @@ public static class DesktopMenu
     public static void Add(Stream icon)
     {
         string executable = Executable;
-        if (executable.Contains('%') || executable.Any(char.IsControl))
+        if (!CanHold(executable))
             throw new ArgumentException("Cannot use a path that contains "
                                         + (executable.Contains('%') ? "\"%\"" : "a line break or another control character")
                                         + ". Please change the path to the Mod Manager executable." + Environment.NewLine
@@ -66,13 +68,34 @@ public static class DesktopMenu
         string entryPath = EntryPath ?? throw new InvalidOperationException("There is no home directory.");
         string iconPath = IconPath;
 
-        Directory.CreateDirectory(Path.GetDirectoryName(iconPath)!);
-        using (var file = File.Create(iconPath)) icon.CopyTo(file);
+        WriteIcon(iconPath, Bytes(icon));
+        WriteEntry(entryPath, Entry(executable, iconPath));
+    }
 
-        Directory.CreateDirectory(Path.GetDirectoryName(entryPath)!);
-        string temporary = entryPath + ".new";
-        File.WriteAllText(temporary, Entry(executable, iconPath), new UTF8Encoding(false));
-        File.Move(temporary, entryPath, overwrite: true);
+    public static bool Refresh(Func<Stream> openIcon)
+    {
+        string executable = Executable;
+        if (Read().State != MenuEntryState.Current || !CanHold(executable)) return false;
+        string entryPath = EntryPath;
+        string iconPath = IconPath;
+        bool changed = false;
+
+        byte[] picture;
+        using (var icon = openIcon()) picture = Bytes(icon);
+        if (!File.Exists(iconPath) || !File.ReadAllBytes(iconPath).AsSpan().SequenceEqual(picture))
+        {
+            WriteIcon(iconPath, picture);
+            changed = true;
+        }
+
+        string text = File.ReadAllText(entryPath);
+        string wanted = Entry(executable, iconPath);
+        if (text != wanted && WrittenByManager(text))
+        {
+            WriteEntry(entryPath, wanted);
+            changed = true;
+        }
+        return changed;
     }
 
     public static void Remove()
@@ -82,20 +105,58 @@ public static class DesktopMenu
     }
 
     private static string Entry(string executable, string iconPath)
-        => string.Join("\n",
-               "[Desktop Entry]",
-               "Type=Application",
-               "Name=" + ManagerUpdater.ProductName,
-               "GenericName=DnW Mod manager",
-               "Comment=Installs and manages mods for Drag'n Wash",
-               "Keywords=Drag'n Wash;DragNWash;mods;",
-               TargetKey + Escape(executable),
-               "Exec=" + Escape(ExecArgument(executable)),
-               "Icon=" + Escape(iconPath),
-               "Terminal=false",
-               "Categories=Game;",
-               "StartupWMClass=" + WindowClass)
-           + "\n";
+    {
+        string body = string.Join("\n",
+            "[Desktop Entry]",
+            "Type=Application",
+            "Name=" + ManagerUpdater.ProductName,
+            "GenericName=DnW Mod manager",
+            "Comment=Installs and manages mods for Drag'n Wash",
+            "Keywords=Drag'n Wash;DragNWash;mods;",
+            TargetKey + Escape(executable),
+            "Exec=" + Escape(ExecArgument(executable)),
+            "Icon=" + Escape(iconPath),
+            "Terminal=false",
+            "Categories=Game;",
+            "StartupWMClass=" + WindowClass)
+            + "\n";
+        return body + ChecksumKey + Checksum(body) + "\n";
+    }
+
+    private static bool WrittenByManager(string text)
+    {
+        int at = text.LastIndexOf("\n" + ChecksumKey, StringComparison.Ordinal);
+        if (at < 0) return false;
+        string body = text[..(at + 1)];
+        return text[(at + 1 + ChecksumKey.Length)..].Trim() == Checksum(body);
+    }
+
+    private static string Checksum(string body)
+        => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(body)), 0, 8).ToLowerInvariant();
+
+    private static bool CanHold(string executable)
+        => !executable.Contains('%') && !executable.Any(char.IsControl);
+
+    private static void WriteIcon(string path, byte[] picture)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllBytes(path, picture);
+    }
+
+    private static void WriteEntry(string path, string text)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        string temporary = path + ".new";
+        File.WriteAllText(temporary, text, new UTF8Encoding(false));
+        File.Move(temporary, path, overwrite: true);
+    }
+
+    private static byte[] Bytes(Stream stream)
+    {
+        using var copy = new MemoryStream();
+        stream.CopyTo(copy);
+        return copy.ToArray();
+    }
 
     private static string ExecArgument(string path)
     {

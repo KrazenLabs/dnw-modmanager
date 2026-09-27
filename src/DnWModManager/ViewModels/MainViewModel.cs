@@ -36,7 +36,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _newMods = new NewMods(Settings);
 
         foreach (var url in Settings.ExtraCatalogs) ExtraCatalogs.Add(url);
-        if (ShowDesktopMenu) _menuEntry = DesktopMenu.Read();
+        if (ShowDesktopMenu)
+        {
+            RefreshMenuEntry();
+            _menuEntry = DesktopMenu.Read();
+        }
 
         RefreshCommand = new AsyncRelayCommand(() => RefreshAsync(checkForUpdates: true, reloadCatalogs: true));
         FixEverythingCommand = new AsyncRelayCommand(FixEverythingAsync, () => RepairableCount > 0);
@@ -234,6 +238,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public IBrush LaunchOptionStatusBrush => Theme.Brush(GameLauncher.StartsLoader(_steamOptions, Install) ? Theme.Success : Theme.Warning);
 
     public bool ShowDesktopMenu { get; } = DesktopMenu.IsAvailable;
+
+    private static readonly Uri LogoAsset = new("avares://DnWModManager/Assets/logo.png");
 
     private MenuEntry _menuEntry;
     public MenuEntry MenuEntry
@@ -1394,7 +1400,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         bool update = _menuEntry?.State == MenuEntryState.Other;
         try
         {
-            using (var icon = AssetLoader.Open(new Uri("avares://DnWModManager/Assets/logo.png")))
+            using (var icon = AssetLoader.Open(LogoAsset))
                 DesktopMenu.Add(icon);
             Status = update
                 ? "The menu entry has been updated."
@@ -1408,6 +1414,16 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         {
             MenuEntry = DesktopMenu.Read();
         }
+    }
+
+    private static void RefreshMenuEntry()
+    {
+        try
+        {
+            DesktopMenu.Refresh(() => AssetLoader.Open(LogoAsset));
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 
     private async Task RemoveFromMenuAsync()
