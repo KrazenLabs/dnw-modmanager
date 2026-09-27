@@ -10,13 +10,19 @@ public static class Shell
     };
 
     public static void OpenFolder(string path)
-        => Starter(new ProcessStartInfo("explorer.exe", Quote(path)) { UseShellExecute = true });
+        => Starter(Platform.IsWindows
+            ? new ProcessStartInfo("explorer.exe", Quote(path)) { UseShellExecute = true }
+            : Platform.DesktopOpen(path));
 
     public static void RevealFile(string path)
-        => Starter(new ProcessStartInfo("explorer.exe", "/select," + Quote(path)) { UseShellExecute = true });
+        => Starter(Platform.IsWindows
+            ? new ProcessStartInfo("explorer.exe", "/select," + Quote(path)) { UseShellExecute = true }
+            : Platform.DesktopOpen(Path.GetDirectoryName(path)));
 
     public static void OpenUrl(string url)
-        => Starter(new ProcessStartInfo(url) { UseShellExecute = true });
+        => Starter(Platform.IsWindows
+            ? new ProcessStartInfo(url) { UseShellExecute = true }
+            : Platform.DesktopOpen(url));
 
     public static bool IsWebAddress(string text)
         => Uri.TryCreate(text, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https";

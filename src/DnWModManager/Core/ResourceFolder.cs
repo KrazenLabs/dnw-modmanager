@@ -85,11 +85,13 @@ public sealed class ResourceFolder
 
     public string FileTypesLabel => Extensions.Count == 0 ? "any file" : string.Join(", ", Extensions);
 
-    public string DialogFilter => Extensions.Count == 0
-        ? "All files (*.*)|*.*"
-        : Name + " (" + Patterns + ")|" + Patterns;
+    public string PickerName => Extensions.Count == 0
+        ? "All files"
+        : Name + " (" + string.Join(";", Extensions.Select(e => "*" + e)) + ")";
 
-    private string Patterns => string.Join(";", Extensions.Select(e => "*" + e));
+    public IReadOnlyList<string> PickerPatterns => Extensions.Count == 0
+        ? new[] { "*" }
+        : Extensions.SelectMany(e => new[] { "*" + e, "*" + e.ToUpperInvariant() }).Distinct(StringComparer.Ordinal).ToList();
 
     public static IReadOnlyList<ResourceFolder> ForMod(InstalledMod mod)
     {
@@ -112,7 +114,7 @@ public sealed class ResourceFolder
         {
             if (!TryResolve(modDirectory, spec.Folder, out string folder, out string fullPath, out _)) continue;
             if (!TryNormalizeExtensions(spec.Extensions, out string[] extensions)) continue;
-            if (result.Any(f => string.Equals(f.FullPath, fullPath, StringComparison.OrdinalIgnoreCase))) continue;
+            if (result.Any(f => string.Equals(f.FullPath, fullPath, Platform.PathComparison))) continue;
             result.Add(new ResourceFolder(modDirectory, folder, fullPath, spec, extensions));
         }
         return result;
@@ -244,7 +246,7 @@ public sealed class ResourceFolder
     {
         string baseName = Path.GetFileName(source);
         if (string.IsNullOrEmpty(baseName)) baseName = source.TrimEnd('\\', '/', ':');
-        string prefix = source.EndsWith('\\') ? source : source + "\\";
+        string prefix = EndsWithSeparator(source) ? source : source + Path.DirectorySeparatorChar;
 
         var pending = new Stack<string>();
         pending.Push(source);
@@ -336,7 +338,7 @@ public sealed class ResourceFolder
         try
         {
             string target = TrimSeparators(Path.GetFullPath(Path.Combine(FullPath, relative)));
-            if (!IsInside(FullPath, target) || string.Equals(FullPath, target, StringComparison.OrdinalIgnoreCase))
+            if (!IsInside(FullPath, target) || string.Equals(FullPath, target, Platform.PathComparison))
                 throw new IOException("Leads outside mod root");
             string directory = Path.GetDirectoryName(target)!;
             if (HasLinkBetween(FullPath, directory)) throw new IOException("Links are not allowed");
@@ -462,7 +464,8 @@ public sealed class ResourceFolder
         {
             root = TrimSeparators(Path.GetFullPath(modDirectory));
             normalized = parts.Count == 0 ? "." : string.Join("\\", parts);
-            full = parts.Count == 0 ? root : TrimSeparators(Path.GetFullPath(Path.Combine(root, normalized)));
+            string relative = string.Join(Path.DirectorySeparatorChar, parts);
+            full = parts.Count == 0 ? root : TrimSeparators(Path.GetFullPath(Path.Combine(root, relative)));
         }
         catch (Exception e)
         {
@@ -511,9 +514,12 @@ public sealed class ResourceFolder
     {
         root = TrimSeparators(root);
         path = TrimSeparators(path);
-        string prefix = root.EndsWith('\\') ? root : root + "\\";
-        return string.Equals(root, path, StringComparison.OrdinalIgnoreCase) || path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+        string prefix = EndsWithSeparator(root) ? root : root + Path.DirectorySeparatorChar;
+        return string.Equals(root, path, Platform.PathComparison) || path.StartsWith(prefix, Platform.PathComparison);
     }
+
+    public static bool EndsWithSeparator(string path)
+        => !string.IsNullOrEmpty(path) && path[^1] is '\\' or '/';
 
     public static bool HasLinkBetween(string root, string path)
     {

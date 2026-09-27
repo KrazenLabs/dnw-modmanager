@@ -1,38 +1,34 @@
-<Window x:Class="DnWModManager.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="DnWModManager.MainWindow"
         Title="DnW Mod Manager"
+        Icon="/Assets/app.ico"
         Height="760"
         Width="1140"
         MinHeight="560"
         MinWidth="900"
-        WindowStartupLocation="CenterScreen"
-        Background="{StaticResource Bg}"
-        UseLayoutRounding="True"
-        TextOptions.TextFormattingMode="Display">
+        WindowStartupLocation="CenterScreen">
 
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+    <Window.Styles>
+        <Style Selector="Rectangle.dropzone">
+            <Setter Property="Stroke" Value="{StaticResource TextFaint}"/>
+        </Style>
+        <Style Selector="Rectangle.dropzone.droptarget">
+            <Setter Property="Stroke" Value="{StaticResource Accent}"/>
+        </Style>
+    </Window.Styles>
 
-        <!-- Header -->
+    <Grid RowDefinitions="Auto,*,Auto">
+
         <Border Background="{StaticResource Surface}"
                 BorderBrush="{StaticResource BorderBrushSoft}"
                 BorderThickness="0,0,0,1">
-            <Grid Margin="20,14">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+            <Grid Margin="20,14" ColumnDefinitions="Auto,*,Auto">
 
-                <Image Source="Assets/logo.png"
+                <Image Source="/Assets/logo.png"
                        Width="38"
                        Height="38"
-                       RenderOptions.BitmapScalingMode="HighQuality"
+                       RenderOptions.BitmapInterpolationMode="HighQuality"
                        VerticalAlignment="Center"/>
 
                 <StackPanel Grid.Column="1"
@@ -40,14 +36,12 @@
                             VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="DnW Mod Manager"
-                                   Style="{StaticResource Title}"/>
-                        <Border Background="{StaticResource SurfaceAlt}"
-                                CornerRadius="10"
-                                Padding="8,2"
+                                   Classes="title"/>
+                        <Border Classes="pill"
                                 Margin="10,2,0,0"
                                 VerticalAlignment="Center"
-                                ToolTip="Mod Manager is running as administrator."
-                                Visibility="{Binding IsElevated, Converter={StaticResource NullToCollapsed}}">
+                                ToolTip.Tip="Mod Manager is running as administrator."
+                                IsVisible="{Binding IsElevated}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="&#xEA18;"
                                            FontFamily="Segoe MDL2 Assets"
@@ -56,36 +50,34 @@
                                            VerticalAlignment="Center"
                                            Margin="0,0,5,0"/>
                                 <TextBlock Text="Administrator"
-                                           Style="{StaticResource Muted}"
+                                           Classes="muted"
                                            FontSize="11"/>
                             </StackPanel>
                         </Border>
-                        <Button Style="{StaticResource PrimaryButton}"
+                        <Button Classes="primary"
                                 Padding="9,2"
                                 FontSize="11"
                                 Margin="10,2,0,0"
                                 VerticalAlignment="Center"
                                 Content="{Binding ManagerUpdateText}"
-                                ToolTip="A new Mod Manager version is available. Click here to update."
-                                Visibility="{Binding ManagerHasUpdate, Converter={StaticResource NullToCollapsed}}"
+                                ToolTip.Tip="A new Mod Manager version is available. Click here to update."
+                                IsVisible="{Binding ManagerHasUpdate}"
                                 Command="{Binding UpdateManagerCommand}"/>
-                        <Border Background="{StaticResource SurfaceAlt}"
-                                CornerRadius="10"
-                                Padding="8,2"
+                        <Border Classes="pill"
                                 Margin="10,2,0,0"
                                 VerticalAlignment="Center">
                             <TextBlock Text="{Binding LoaderVersionText}"
-                                       Style="{StaticResource Muted}"
+                                       Classes="muted"
                                        FontSize="11"/>
                         </Border>
-                        <Button Style="{StaticResource PrimaryButton}"
+                        <Button Classes="primary"
                                 Padding="9,2"
                                 FontSize="11"
                                 Margin="6,2,0,0"
                                 VerticalAlignment="Center"
                                 Content="{Binding LoaderUpdateText}"
-                                ToolTip="Update the Mod Loader"
-                                Visibility="{Binding LoaderHasUpdate, Converter={StaticResource NullToCollapsed}}"
+                                ToolTip.Tip="Update the Mod Loader"
+                                IsVisible="{Binding LoaderHasUpdate}"
                                 Command="{Binding UpdateLoaderCommand}"/>
                     </StackPanel>
 
@@ -93,25 +85,25 @@
                                HorizontalAlignment="Left"
                                LastChildFill="True">
                         <Button DockPanel.Dock="Right"
-                                Style="{StaticResource GhostButton}"
+                                Classes="ghost"
                                 Content="Change"
                                 Margin="8,0,0,0"
                                 Command="{Binding ChangeGameFolderCommand}"/>
                         <TextBlock DockPanel.Dock="Right"
                                    Text="{Binding InstallSourceText}"
-                                   Style="{StaticResource Muted}"
+                                   Classes="muted"
                                    VerticalAlignment="Center"
                                    TextWrapping="NoWrap"/>
                         <TextBlock DockPanel.Dock="Right"
                                    Text=" &#183; "
-                                   Style="{StaticResource Muted}"
+                                   Classes="muted"
                                    VerticalAlignment="Center"
                                    TextWrapping="NoWrap"/>
-                        <Button Style="{StaticResource PathLink}"
+                        <Button Classes="link path"
                                 FontSize="12"
                                 VerticalAlignment="Center"
                                 Content="{Binding GameDirectoryText}"
-                                ToolTip="{Binding GameDirectoryText}"
+                                ToolTip.Tip="{Binding GameDirectoryText}"
                                 Command="{Binding OpenFolderCommand}"
                                 CommandParameter="Game"/>
                     </DockPanel>
@@ -120,14 +112,14 @@
                 <StackPanel Grid.Column="2"
                             Orientation="Horizontal"
                             VerticalAlignment="Center">
-                    <Button Style="{StaticResource SecondaryButton}"
+                    <Button Classes="secondary"
                             Content="Refresh"
                             Margin="0,0,8,0"
                             Command="{Binding RefreshCommand}"/>
-                    <Button Style="{StaticResource PrimaryButton}"
+                    <Button Classes="primary"
                             Padding="24,9"
                             Command="{Binding LaunchCommand}"
-                            ToolTip="Starts the game with -force-d3d11, which avoids the Direct3D 12 startup crash">
+                            ToolTip.Tip="{Binding PlayTooltip}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#x25B6;"
                                        FontSize="11"
@@ -142,39 +134,34 @@
             </Grid>
         </Border>
 
-        <!-- Body -->
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="188"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
+        <Grid Grid.Row="1" ColumnDefinitions="188,*">
 
             <Border Background="{StaticResource Surface}"
                     BorderBrush="{StaticResource BorderBrushSoft}"
                     BorderThickness="0,0,1,0">
                 <StackPanel Margin="0,12">
-                    <RadioButton Style="{StaticResource NavButton}"
+                    <RadioButton Classes="nav"
                                  Content="Installed mods"
                                  GroupName="nav"
                                  IsChecked="{Binding CurrentPage, Converter={StaticResource Equals}, ConverterParameter=Installed}"/>
-                    <RadioButton Style="{StaticResource NavButton}"
+                    <RadioButton Classes="nav"
                                  Content="Issues"
                                  GroupName="nav"
                                  Tag="{Binding IssueBadge}"
                                  Background="{Binding IssueBadgeBrush}"
-                                 Visibility="{Binding HasIssues, Converter={StaticResource NullToCollapsed}}"
+                                 IsVisible="{Binding HasIssues}"
                                  IsChecked="{Binding CurrentPage, Converter={StaticResource Equals}, ConverterParameter=Issues}"/>
-                    <RadioButton Style="{StaticResource NavButton}"
+                    <RadioButton Classes="nav"
                                  Content="Get mods"
                                  GroupName="nav"
                                  Tag="{Binding NewModsBadge}"
                                  Background="{StaticResource Accent}"
                                  IsChecked="{Binding CurrentPage, Converter={StaticResource Equals}, ConverterParameter=Browse}"/>
-                    <RadioButton Style="{StaticResource NavButton}"
+                    <RadioButton Classes="nav"
                                  Content="Log"
                                  GroupName="nav"
                                  IsChecked="{Binding CurrentPage, Converter={StaticResource Equals}, ConverterParameter=Log}"/>
-                    <RadioButton Style="{StaticResource NavButton}"
+                    <RadioButton Classes="nav"
                                  Content="Settings"
                                  GroupName="nav"
                                  IsChecked="{Binding CurrentPage, Converter={StaticResource Equals}, ConverterParameter=Settings}"/>
@@ -183,46 +170,40 @@
 
             <Grid Grid.Column="1">
 
-                <!-- Installed mods -->
-                <DockPanel Visibility="{Binding IsInstalledPage, Converter={StaticResource NullToCollapsed}}"
+                <DockPanel IsVisible="{Binding IsInstalledPage}"
                            LastChildFill="True">
 
-                    <!-- Only when something is wrong -->
                     <Border DockPanel.Dock="Top"
-                            Style="{StaticResource Card}"
+                            Classes="card"
                             Margin="20,18,20,0"
-                            Visibility="{Binding ShowHealthCard, Converter={StaticResource NullToCollapsed}}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
+                            IsVisible="{Binding ShowHealthCard}">
+                        <Grid ColumnDefinitions="*,Auto">
                             <StackPanel VerticalAlignment="Center"
                                         Margin="0,0,14,0">
                                 <TextBlock Text="{Binding HealthSummary}"
-                                           Style="{StaticResource Heading}"/>
+                                           Classes="heading"/>
                                 <TextBlock Text="{Binding HealthHint}"
-                                           Style="{StaticResource Muted}"
+                                           Classes="muted"
                                            Margin="0,3,0,0"
-                                           Visibility="{Binding HasIssues, Converter={StaticResource NullToCollapsed}}"/>
+                                           IsVisible="{Binding HasIssues}"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1"
                                         Orientation="Horizontal"
                                         VerticalAlignment="Center">
-                                <Button Style="{StaticResource SecondaryButton}"
+                                <Button Classes="secondary"
                                         Content="Install the loader"
                                         Margin="0,0,8,0"
-                                        Visibility="{Binding LoaderMissing, Converter={StaticResource NullToCollapsed}}"
+                                        IsVisible="{Binding LoaderMissing}"
                                         Command="{Binding InstallLoaderCommand}"/>
-                                <Button Style="{StaticResource SecondaryButton}"
+                                <Button Classes="secondary"
                                         Content="View issues"
                                         Margin="0,0,8,0"
-                                        Visibility="{Binding HasIssues, Converter={StaticResource NullToCollapsed}}"
+                                        IsVisible="{Binding HasIssues}"
                                         Command="{Binding GoToCommand}"
                                         CommandParameter="Issues"/>
-                                <Button Style="{StaticResource PrimaryButton}"
+                                <Button Classes="primary"
                                         Content="Fix everything"
-                                        Visibility="{Binding RepairableCount, Converter={StaticResource NullToCollapsed}}"
+                                        IsVisible="{Binding RepairableCount, Converter={StaticResource HasValue}}"
                                         Command="{Binding FixEverythingCommand}"/>
                             </StackPanel>
                         </Grid>
@@ -231,22 +212,24 @@
                     <StackPanel DockPanel.Dock="Top"
                                 Orientation="Horizontal"
                                 Margin="20,18,20,12">
-                        <Button Style="{StaticResource SecondaryButton}"
+                        <Button Classes="secondary"
                                 Content="Install from zip..."
                                 Margin="0,0,8,0"
                                 Command="{Binding InstallFromFileCommand}"
-                                ToolTip="Pick a mod zip. The manager works out what is in it and puts each part where it belongs."/>
-                        <Button Style="{StaticResource SecondaryButton}"
+                                ToolTip.Tip="Install a mod from a zip file."/>
+                        <Button Classes="secondary"
                                 Content="Install from folder..."
                                 Margin="0,0,8,0"
                                 Command="{Binding InstallFromFolderCommand}"/>
-                        <Button Style="{StaticResource PrimaryButton}"
+                        <Button Classes="primary"
                                 Margin="0,0,8,0"
-                                Visibility="{Binding HasUpdates, Converter={StaticResource NullToCollapsed}}"
+                                IsVisible="{Binding HasUpdates}"
                                 Command="{Binding UpdateEverythingCommand}">
-                            <TextBlock><Run Text="Update all ("/><Run Text="{Binding UpdateCount, Mode=OneWay}"/><Run Text=")"/></TextBlock>
+                            <TextBlock>
+                                <Run Text="Update all ("/><Run Text="{Binding UpdateCount, Mode=OneWay}"/><Run Text=")"/>
+                            </TextBlock>
                         </Button>
-                        <Button Style="{StaticResource GhostButton}"
+                        <Button Classes="ghost"
                                 Content="Open Mods folder"
                                 Command="{Binding OpenFolderCommand}"
                                 CommandParameter="Mods"/>
@@ -257,27 +240,22 @@
                         <ItemsControl ItemsSource="{Binding Mods}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Style="{StaticResource Row}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
+                                    <Border Classes="row">
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
 
-                                            <CheckBox Style="{StaticResource Switch}"
+                                            <CheckBox Classes="switch"
                                                       Margin="0,2,14,0"
                                                       VerticalAlignment="Top"
                                                       IsChecked="{Binding IsEnabled, Mode=TwoWay}"
                                                       IsEnabled="{Binding CanToggle}"
-                                                      ToolTip="{Binding ToggleTooltip}"/>
+                                                      ToolTip.Tip="{Binding ToggleTooltip}"/>
 
                                             <StackPanel Grid.Column="1">
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Text="{Binding Name}"
-                                                               Style="{StaticResource Heading}"/>
+                                                               Classes="heading"/>
                                                     <TextBlock Text="{Binding Version}"
-                                                               Style="{StaticResource Muted}"
+                                                               Classes="muted"
                                                                Margin="7,2,0,0"
                                                                VerticalAlignment="Center"/>
                                                     <Border CornerRadius="9"
@@ -292,18 +270,18 @@
                                                 </StackPanel>
 
                                                 <TextBlock Text="{Binding Byline}"
-                                                           Style="{StaticResource Muted}"
+                                                           Classes="muted"
                                                            Margin="0,2,0,0"/>
 
                                                 <TextBlock Text="{Binding Description}"
-                                                           Style="{StaticResource BodyText}"
+                                                           Classes="body"
                                                            Foreground="{StaticResource TextMuted}"
                                                            Margin="0,6,12,0"
-                                                           Visibility="{Binding Description, Converter={StaticResource NullToCollapsed}}"/>
+                                                           IsVisible="{Binding Description, Converter={StaticResource HasValue}}"/>
 
                                                 <ItemsControl ItemsSource="{Binding Issues}"
                                                               Margin="0,7,12,0"
-                                                              Visibility="{Binding HasIssues, Converter={StaticResource NullToCollapsed}}">
+                                                              IsVisible="{Binding HasIssues}">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>
                                                             <StackPanel Orientation="Horizontal"
@@ -314,7 +292,7 @@
                                                                          VerticalAlignment="Top"
                                                                          Fill="{Binding Severity, Converter={StaticResource SeverityBrush}}"/>
                                                                 <TextBlock Text="{Binding Title}"
-                                                                           Style="{StaticResource Muted}"/>
+                                                                           Classes="muted"/>
                                                             </StackPanel>
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>
@@ -322,48 +300,29 @@
 
                                                 <ItemsControl ItemsSource="{Binding ResourceFolders}"
                                                               Margin="0,8,12,0"
-                                                              Visibility="{Binding HasResourceFolders, Converter={StaticResource NullToCollapsed}}">
+                                                              IsVisible="{Binding HasResourceFolders}">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>
-                                                            <Grid Margin="0,0,0,4"
-                                                                  AllowDrop="True"
-                                                                  DragEnter="OnResourceDragOver"
-                                                                  DragOver="OnResourceDragOver"
-                                                                  DragLeave="OnResourceDragLeave"
-                                                                  Drop="OnResourceDrop">
-                                                                <Rectangle RadiusX="6"
+                                                            <Grid Classes="dropzone"
+                                                                  Margin="0,0,0,4"
+                                                                  Background="Transparent"
+                                                                  DragDrop.AllowDrop="True">
+                                                                <Rectangle Classes="dropzone"
+                                                                           Classes.droptarget="{Binding IsDropTarget}"
+                                                                           RadiusX="6"
                                                                            RadiusY="6"
                                                                            Fill="{StaticResource SurfaceAlt}"
                                                                            StrokeThickness="1"
-                                                                           StrokeDashArray="4 3">
-                                                                    <Rectangle.Style>
-                                                                        <Style TargetType="Rectangle">
-                                                                            <Setter Property="Stroke"
-                                                                                    Value="{StaticResource TextFaint}"/>
-                                                                            <Style.Triggers>
-                                                                                <DataTrigger Binding="{Binding IsDropTarget}"
-                                                                                             Value="True">
-                                                                                    <Setter Property="Stroke"
-                                                                                            Value="{StaticResource Accent}"/>
-                                                                                </DataTrigger>
-                                                                            </Style.Triggers>
-                                                                        </Style>
-                                                                    </Rectangle.Style>
-                                                                </Rectangle>
-                                                                <Grid Margin="10,6">
-                                                                    <Grid.ColumnDefinitions>
-                                                                        <ColumnDefinition Width="*"/>
-                                                                        <ColumnDefinition Width="Auto"/>
-                                                                        <ColumnDefinition Width="Auto"/>
-                                                                    </Grid.ColumnDefinitions>
+                                                                           StrokeDashArray="4,3"/>
+                                                                <Grid Margin="10,6" ColumnDefinitions="*,Auto,Auto">
                                                                     <StackPanel VerticalAlignment="Center"
                                                                                 Margin="0,0,16,0">
-                                                                        <TextBlock Style="{StaticResource BodyText}">
+                                                                        <TextBlock Classes="body">
                                                                             <Run Text="{Binding Name, Mode=OneWay}"
                                                                                  FontWeight="SemiBold"/><Run Text="{Binding Description, Mode=OneWay, StringFormat='{}  &#183;  {0}', TargetNullValue=''}"
                                                                                                              Foreground="{StaticResource TextMuted}"/>
                                                                         </TextBlock>
-                                                                        <TextBlock Style="{StaticResource Muted}"
+                                                                        <TextBlock Classes="muted"
                                                                                    Margin="0,2,0,0">
                                                                             <Run Text="Drag and drop "/><Run Text="{Binding DropTypes, Mode=OneWay}"
                                                                                                              Foreground="{StaticResource Text}"
@@ -372,26 +331,26 @@
                                                                     </StackPanel>
                                                                     <TextBlock Grid.Column="1"
                                                                                Text="{Binding CountText}"
-                                                                               Style="{StaticResource Muted}"
+                                                                               Classes="muted"
                                                                                VerticalAlignment="Center"
                                                                                Margin="0,0,12,0"/>
                                                                     <StackPanel Grid.Column="2"
                                                                                 Orientation="Horizontal"
                                                                                 VerticalAlignment="Center">
-                                                                        <Button Style="{StaticResource SecondaryButton}"
+                                                                        <Button Classes="secondary"
                                                                                 Padding="10,4"
                                                                                 FontSize="12"
                                                                                 Content="Add files..."
                                                                                 Command="{Binding DataContext.AddResourceFilesCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                                 CommandParameter="{Binding}"/>
-                                                                        <Button Style="{StaticResource SecondaryButton}"
+                                                                        <Button Classes="secondary"
                                                                                 Padding="10,4"
                                                                                 FontSize="12"
                                                                                 Margin="6,0,0,0"
                                                                                 Content="Add folder..."
                                                                                 Command="{Binding DataContext.AddResourceFolderCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                                 CommandParameter="{Binding}"/>
-                                                                        <Button Style="{StaticResource SecondaryButton}"
+                                                                        <Button Classes="secondary"
                                                                                 Padding="10,4"
                                                                                 FontSize="12"
                                                                                 Margin="6,0,0,0"
@@ -407,20 +366,20 @@
 
                                                 <StackPanel Orientation="Horizontal"
                                                             Margin="0,7,0,0">
-                                                    <Button Style="{StaticResource PathLink}"
+                                                    <Button Classes="link path"
                                                             Content="{Binding Location}"
-                                                            ToolTip="Show this file in Explorer"
+                                                            ToolTip.Tip="Show this file in its folder"
                                                             Command="{Binding DataContext.OpenCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                             CommandParameter="{Binding Mod.AssemblyPath}"/>
                                                     <TextBlock Text="  &#183;  "
-                                                               Style="{StaticResource Muted}"
+                                                               Classes="muted"
                                                                FontSize="11"
-                                                               Visibility="{Binding HasUrl, Converter={StaticResource NullToCollapsed}}"/>
-                                                    <Button Style="{StaticResource LinkButton}"
+                                                               IsVisible="{Binding HasUrl}"/>
+                                                    <Button Classes="link"
                                                             FontSize="11"
                                                             Content="Website"
-                                                            Visibility="{Binding HasUrl, Converter={StaticResource NullToCollapsed}}"
-                                                            ToolTip="{Binding Url}"
+                                                            IsVisible="{Binding HasUrl}"
+                                                            ToolTip.Tip="{Binding Url}"
                                                             Command="{Binding DataContext.OpenCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                             CommandParameter="{Binding Url}"/>
                                                 </StackPanel>
@@ -428,15 +387,15 @@
 
                                             <StackPanel Grid.Column="2"
                                                         VerticalAlignment="Top">
-                                                <Button Style="{StaticResource PrimaryButton}"
+                                                <Button Classes="primary"
                                                         Padding="12,5"
                                                         FontSize="12"
                                                         Content="{Binding UpdateText}"
-                                                        ToolTip="{Binding UpdateTooltip}"
-                                                        Visibility="{Binding HasUpdate, Converter={StaticResource NullToCollapsed}}"
+                                                        ToolTip.Tip="{Binding UpdateTooltip}"
+                                                        IsVisible="{Binding HasUpdate}"
                                                         Command="{Binding DataContext.UpdateModCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                         CommandParameter="{Binding}"/>
-                                                <Button Style="{StaticResource GhostButton}"
+                                                <Button Classes="ghost"
                                                         Content="Remove"
                                                         Margin="0,4,0,0"
                                                         HorizontalAlignment="Right"
@@ -451,29 +410,24 @@
                     </ScrollViewer>
                 </DockPanel>
 
-                <!-- Issues -->
-                <DockPanel Visibility="{Binding IsIssuesPage, Converter={StaticResource NullToCollapsed}}">
+                <DockPanel IsVisible="{Binding IsIssuesPage}">
                     <Border DockPanel.Dock="Top"
-                            Style="{StaticResource Card}"
+                            Classes="card"
                             Margin="20,18,20,12">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
+                        <Grid ColumnDefinitions="*,Auto">
                             <StackPanel VerticalAlignment="Center"
                                         Margin="0,0,14,0">
                                 <TextBlock Text="{Binding HealthSummary}"
-                                           Style="{StaticResource Heading}"/>
-                                <TextBlock Style="{StaticResource Muted}"
+                                           Classes="heading"/>
+                                <TextBlock Classes="muted"
                                            Margin="0,3,0,0"
-                                           Text="Nothing is deleted. Anything removed goes to Mods\_quarantine, so it can be put back."/>
+                                           Text="{Binding QuarantineHint}"/>
                             </StackPanel>
                             <Button Grid.Column="1"
-                                    Style="{StaticResource PrimaryButton}"
+                                    Classes="primary"
                                     Content="Fix everything"
                                     VerticalAlignment="Center"
-                                    Visibility="{Binding RepairableCount, Converter={StaticResource NullToCollapsed}}"
+                                    IsVisible="{Binding RepairableCount, Converter={StaticResource HasValue}}"
                                     Command="{Binding FixEverythingCommand}"/>
                         </Grid>
                     </Border>
@@ -483,13 +437,8 @@
                         <ItemsControl ItemsSource="{Binding Issues}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Style="{StaticResource Row}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
+                                    <Border Classes="row">
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
 
                                             <Ellipse Width="9"
                                                      Height="9"
@@ -500,27 +449,29 @@
                                             <StackPanel Grid.Column="1"
                                                         Margin="0,0,14,0">
                                                 <TextBlock Text="{Binding Title}"
-                                                           Style="{StaticResource Heading}"/>
-                                                <TextBlock Text="{Binding Detail}"
-                                                           Style="{StaticResource BodyText}"
-                                                           Foreground="{StaticResource TextMuted}"
-                                                           Margin="0,5,0,0"/>
-                                                <Button Style="{StaticResource PathLink}"
+                                                           Classes="heading"/>
+                                                <SelectableTextBlock Text="{Binding Detail}"
+                                                                     FontSize="13"
+                                                                     TextWrapping="Wrap"
+                                                                     Foreground="{StaticResource TextMuted}"
+                                                                     SelectionBrush="{StaticResource Accent}"
+                                                                     Margin="0,5,0,0"/>
+                                                <Button Classes="link path"
                                                         Margin="0,6,0,0"
                                                         Content="{Binding Where}"
-                                                        Visibility="{Binding HasWhere, Converter={StaticResource NullToCollapsed}}"
+                                                        IsVisible="{Binding HasWhere}"
                                                         Command="{Binding DataContext.OpenCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                         CommandParameter="{Binding Diagnostic.Path}"/>
                                             </StackPanel>
 
                                             <Button Grid.Column="2"
-                                                    Style="{StaticResource SecondaryButton}"
+                                                    Classes="secondary"
                                                     VerticalAlignment="Top"
                                                     Padding="12,6"
                                                     FontSize="12"
                                                     Content="{Binding RepairLabel}"
-                                                    ToolTip="{Binding RepairDescription}"
-                                                    Visibility="{Binding CanRepair, Converter={StaticResource NullToCollapsed}}"
+                                                    ToolTip.Tip="{Binding RepairDescription}"
+                                                    IsVisible="{Binding CanRepair}"
                                                     Command="{Binding DataContext.FixOneCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                     CommandParameter="{Binding}"/>
                                         </Grid>
@@ -531,35 +482,34 @@
                     </ScrollViewer>
                 </DockPanel>
 
-                <!-- Get mods -->
-                <DockPanel Visibility="{Binding IsBrowsePage, Converter={StaticResource NullToCollapsed}}">
+                <DockPanel IsVisible="{Binding IsBrowsePage}">
                     <Border DockPanel.Dock="Top"
-                            Style="{StaticResource Card}"
+                            Classes="card"
                             Margin="20,18,20,12">
                         <StackPanel>
                             <TextBlock Text="Get mods"
-                                       Style="{StaticResource Heading}"/>
+                                       Classes="heading"/>
                             <TextBlock Text="{Binding CatalogStatus}"
-                                       Style="{StaticResource Muted}"
+                                       Classes="muted"
                                        Margin="0,4,0,0"/>
                             <TextBlock Text="{Binding CatalogProblems}"
-                                       Style="{StaticResource Muted}"
+                                       Classes="muted"
                                        Margin="0,4,0,0"
                                        Foreground="{StaticResource Warning}"
-                                       Visibility="{Binding HasCatalogProblems, Converter={StaticResource NullToCollapsed}}"/>
+                                       IsVisible="{Binding HasCatalogProblems}"/>
                             <StackPanel Orientation="Horizontal"
                                         Margin="0,12,0,0">
-                                <Button Style="{StaticResource SecondaryButton}"
+                                <Button Classes="secondary"
                                         Content="Install from zip..."
                                         Margin="0,0,8,0"
                                         Command="{Binding InstallFromFileCommand}"/>
-                                <Button Style="{StaticResource SecondaryButton}"
+                                <Button Classes="secondary"
                                         Content="Install from folder..."
                                         Margin="0,0,8,0"
                                         Command="{Binding InstallFromFolderCommand}"/>
-                                <Button Style="{StaticResource GhostButton}"
+                                <Button Classes="ghost"
                                         Content="Add a repository"
-                                        ToolTip="Mod repositories are managed under Settings"
+                                        ToolTip.Tip="Mod repositories are managed under Settings"
                                         Command="{Binding GoToCommand}"
                                         CommandParameter="Settings"/>
                             </StackPanel>
@@ -571,54 +521,50 @@
                         <ItemsControl ItemsSource="{Binding Available}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Style="{StaticResource Row}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
+                                    <Border Classes="row">
+                                        <Grid ColumnDefinitions="*,Auto">
                                             <StackPanel Margin="0,0,14,0">
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Text="{Binding Name}"
-                                                               Style="{StaticResource Heading}"/>
+                                                               Classes="heading"/>
                                                     <Border CornerRadius="9"
                                                             Padding="7,1"
                                                             Margin="9,2,0,0"
                                                             VerticalAlignment="Center"
                                                             Background="{StaticResource Accent}"
-                                                            Visibility="{Binding IsNew, Converter={StaticResource NullToCollapsed}}">
+                                                            IsVisible="{Binding IsNew}">
                                                         <TextBlock Text="New"
                                                                    FontSize="11"
                                                                    FontWeight="SemiBold"
                                                                    Foreground="White"/>
                                                     </Border>
                                                     <TextBlock Text="{Binding StateText}"
-                                                               Style="{StaticResource Muted}"
+                                                               Classes="muted"
                                                                Margin="8,2,0,0"
                                                                VerticalAlignment="Center"/>
                                                 </StackPanel>
                                                 <TextBlock Text="{Binding Byline}"
-                                                           Style="{StaticResource Muted}"
+                                                           Classes="muted"
                                                            Margin="0,2,0,0"/>
                                                 <TextBlock Text="{Binding Description}"
-                                                           Style="{StaticResource BodyText}"
+                                                           Classes="body"
                                                            Foreground="{StaticResource TextMuted}"
                                                            Margin="0,6,0,0"/>
-                                                <Button Style="{StaticResource LinkButton}"
+                                                <Button Classes="link"
                                                         FontSize="11"
                                                         Content="Website"
                                                         Margin="0,6,0,0"
-                                                        Visibility="{Binding HasHomepage, Converter={StaticResource NullToCollapsed}}"
+                                                        IsVisible="{Binding HasHomepage}"
                                                         Command="{Binding DataContext.OpenCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                         CommandParameter="{Binding Homepage}"/>
                                             </StackPanel>
 
                                             <Button Grid.Column="1"
-                                                    Style="{StaticResource PrimaryButton}"
+                                                    Classes="primary"
                                                     VerticalAlignment="Top"
                                                     Padding="16,6"
                                                     Content="Install"
-                                                    Visibility="{Binding CanInstall, Converter={StaticResource NullToCollapsed}}"
+                                                    IsVisible="{Binding CanInstall}"
                                                     Command="{Binding DataContext.InstallCatalogCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                     CommandParameter="{Binding}"/>
                                         </Grid>
@@ -629,167 +575,167 @@
                     </ScrollViewer>
                 </DockPanel>
 
-                <!-- Log -->
-                <DockPanel Visibility="{Binding IsLogPage, Converter={StaticResource NullToCollapsed}}">
+                <DockPanel IsVisible="{Binding IsLogPage}">
                     <Border DockPanel.Dock="Top"
-                            Style="{StaticResource Card}"
+                            Classes="card"
                             Margin="20,18,20,12">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
+                        <Grid ColumnDefinitions="*,Auto">
                             <StackPanel VerticalAlignment="Center"
                                         Margin="0,0,14,0">
                                 <TextBlock Text="Loader log"
-                                           Style="{StaticResource Heading}"/>
+                                           Classes="heading"/>
                                 <TextBlock Text="{Binding LogSummary}"
-                                           Style="{StaticResource Muted}"
+                                           Classes="muted"
                                            Margin="0,4,0,0"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1"
                                         Orientation="Horizontal"
                                         VerticalAlignment="Center">
-                                <CheckBox Style="{StaticResource Switch}"
+                                <CheckBox Classes="switch"
                                           Margin="0,0,16,0"
                                           Content="Show only errors and warnings"
                                           Foreground="{StaticResource TextMuted}"
                                           IsChecked="{Binding LogProblemsOnly, Mode=TwoWay}"/>
-                                <Button Style="{StaticResource SecondaryButton}"
+                                <Button Classes="secondary"
                                         Content="Open log"
-                                        Visibility="{Binding HasLog, Converter={StaticResource NullToCollapsed}}"
+                                        IsVisible="{Binding HasLog}"
                                         Command="{Binding OpenCommand}"
                                         CommandParameter="{Binding LogPath}"/>
                             </StackPanel>
                         </Grid>
                     </Border>
 
-                    <Border Style="{StaticResource Card}"
+                    <Border Classes="card"
                             Margin="20,0,20,20"
                             Padding="4">
                         <Grid>
-                            <ListBox ItemsSource="{Binding LogView}"
-                                     Background="Transparent"
-                                     BorderThickness="0"
-                                     ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                                     VirtualizingPanel.IsVirtualizing="True"
-                                     VirtualizingPanel.VirtualizationMode="Recycling">
-                                <ListBox.ItemContainerStyle>
-                                    <Style TargetType="ListBoxItem">
-                                        <Setter Property="Background"
-                                                Value="Transparent"/>
-                                        <Setter Property="Padding"
-                                                Value="6,1"/>
-                                        <Setter Property="Template">
-                                            <Setter.Value>
-                                                <ControlTemplate TargetType="ListBoxItem">
-                                                    <Border Background="{TemplateBinding Background}"
-                                                            Padding="{TemplateBinding Padding}">
-                                                        <ContentPresenter/>
-                                                    </Border>
-                                                </ControlTemplate>
-                                            </Setter.Value>
-                                        </Setter>
-                                    </Style>
-                                </ListBox.ItemContainerStyle>
+                            <ListBox Classes="log"
+                                     ItemsSource="{Binding LogView}"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Auto">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
-                                        <TextBlock Style="{StaticResource Mono}"
+                                        <TextBlock Classes="mono"
                                                    TextWrapping="NoWrap"
                                                    Foreground="{Binding Level, Converter={StaticResource LogLevelBrush}}">
                                             <Run Text="{Binding TimeText, Mode=OneWay}"
-                                                 Foreground="{StaticResource TextFaint}"/>
-                                            <Run Text="  "/><Run Text="{Binding Source, Mode=OneWay}"
-                                                                 Foreground="{StaticResource TextFaint}"/>
-                                            <Run Text="  "/><Run Text="{Binding Message, Mode=OneWay}"/>
+                                                 Foreground="{StaticResource TextFaint}"/><Run Text="  "/><Run Text="{Binding Source, Mode=OneWay}"
+                                                                                                               Foreground="{StaticResource TextFaint}"/><Run Text="  "/><Run Text="{Binding Message, Mode=OneWay}"/>
                                         </TextBlock>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
 
                             <TextBlock Text="{Binding LogEmptyText}"
-                                       Style="{StaticResource Muted}"
+                                       Classes="muted"
                                        FontSize="13"
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        IsHitTestVisible="False"
-                                       Visibility="{Binding LogEmptyText, Converter={StaticResource NullToCollapsed}}"/>
+                                       IsVisible="{Binding LogEmptyText, Converter={StaticResource HasValue}}"/>
                         </Grid>
                     </Border>
                 </DockPanel>
 
-                <!-- Settings -->
-                <ScrollViewer Visibility="{Binding IsSettingsPage, Converter={StaticResource NullToCollapsed}}"
+                <ScrollViewer IsVisible="{Binding IsSettingsPage}"
                               VerticalScrollBarVisibility="Auto"
                               Padding="20,18,14,20">
                     <StackPanel MaxWidth="760"
                                 HorizontalAlignment="Left">
 
-                        <Border Style="{StaticResource Card}"
+                        <Border Classes="card"
                                 Margin="0,0,0,12">
                             <StackPanel>
                                 <TextBlock Text="Starting the game"
-                                           Style="{StaticResource Heading}"/>
+                                           Classes="heading"/>
 
                                 <RadioButton x:Name="LaunchDirect"
                                              GroupName="launch"
                                              Margin="0,12,0,0"
-                                             Style="{StaticResource OptionRadio}"
-                                             Checked="OnLaunchModeChanged">
+                                             Classes="option"
+                                             IsEnabled="{Binding CanLaunchDirectly}"
+                                             IsCheckedChanged="OnLaunchModeChanged">
                                     <StackPanel>
                                         <TextBlock Text="Start the game directly"
-                                                   Style="{StaticResource BodyText}"/>
-                                        <TextBlock Style="{StaticResource Muted}"
+                                                   Classes="body"/>
+                                        <TextBlock Classes="muted"
                                                    Margin="0,2,0,0"
-                                                   Text="Always adds -force-d3d11, which avoids a Direct3D 12 startup crash."/>
+                                                   Text="{Binding DirectLaunchDescription}"/>
                                     </StackPanel>
                                 </RadioButton>
 
                                 <RadioButton x:Name="LaunchSteam"
                                              GroupName="launch"
                                              Margin="0,10,0,0"
-                                             Style="{StaticResource OptionRadio}"
-                                             Checked="OnLaunchModeChanged">
+                                             Classes="option"
+                                             IsCheckedChanged="OnLaunchModeChanged">
                                     <StackPanel>
                                         <TextBlock Text="Start through Steam"
-                                                   Style="{StaticResource BodyText}"/>
-                                        <TextBlock Style="{StaticResource Muted}"
+                                                   Classes="body"/>
+                                        <TextBlock Classes="muted"
                                                    Margin="0,2,0,0"
-                                                   Text="Uses Steam launch options. Please set -force-d3d11 there yourself."/>
+                                                   Text="{Binding SteamLaunchDescription}"/>
                                     </StackPanel>
                                 </RadioButton>
 
-                                <Border Background="#33E8A33D"
+                                <Border Background="{StaticResource WarningSoft}"
                                         CornerRadius="6"
                                         Padding="12,9"
                                         Margin="0,12,0,0"
-                                        Visibility="{Binding ShowSteamD3D11Hint, Converter={StaticResource NullToCollapsed}}">
-                                    <TextBlock Style="{StaticResource BodyText}"
+                                        IsVisible="{Binding ShowSteamD3D11Hint}">
+                                    <TextBlock Classes="body"
                                                FontSize="12"
                                                Text="Your Steam launch options do not include -force-d3d11. Set it in Steam (right-click the game, Properties, General, Launch Options), or use &quot;Start the game directly&quot; above."/>
                                 </Border>
 
+                                <Border Background="{StaticResource SurfaceAlt}"
+                                        CornerRadius="6"
+                                        Padding="12,9"
+                                        Margin="0,12,0,0"
+                                        IsVisible="{Binding ShowLaunchOption}">
+                                    <StackPanel>
+                                        <TextBlock Classes="body"
+                                                   FontSize="12"
+                                                   Text="{Binding LaunchOptionText}"/>
+                                        <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+                                            <TextBox IsReadOnly="True"
+                                                     Background="{StaticResource Bg}"
+                                                     FontFamily="{StaticResource MonoFont}"
+                                                     FontSize="12"
+                                                     Text="{Binding RequiredLaunchOption, Mode=OneWay}"/>
+                                            <Button Grid.Column="1"
+                                                    Classes="secondary"
+                                                    Content="Copy"
+                                                    Margin="8,0,0,0"
+                                                    Command="{Binding CopyLaunchOptionCommand}"/>
+                                        </Grid>
+                                        <TextBlock Classes="muted"
+                                                   Margin="0,6,0,0"
+                                                   Text="{Binding LaunchOptionStatus}"
+                                                   Foreground="{Binding LaunchOptionStatusBrush}"
+                                                   IsVisible="{Binding LaunchOptionStatus, Converter={StaticResource HasValue}}"/>
+                                    </StackPanel>
+                                </Border>
+
                                 <TextBlock Text="Extra launch options"
-                                           Style="{StaticResource Muted}"
+                                           Classes="muted"
                                            Margin="0,16,0,5"/>
                                 <TextBox x:Name="ExtraArgs"
                                          LostFocus="OnExtraArgsChanged"/>
 
                                 <CheckBox x:Name="CloseOnLaunch"
-                                          Style="{StaticResource Switch}"
+                                          Classes="switch"
                                           Margin="0,14,0,0"
                                           Content="Close the manager after starting the game"
-                                          Checked="OnCloseOnLaunchChanged"
-                                          Unchecked="OnCloseOnLaunchChanged"/>
+                                          IsCheckedChanged="OnCloseOnLaunchChanged"/>
                             </StackPanel>
                         </Border>
 
-                        <Border Style="{StaticResource Card}"
+                        <Border Classes="card"
                                 Margin="0,0,0,12">
                             <StackPanel>
                                 <TextBlock Text="Mod repositories"
-                                           Style="{StaticResource Heading}"/>
-                                <TextBlock Style="{StaticResource Muted}"
+                                           Classes="heading"/>
+                                <TextBlock Classes="muted"
                                            Margin="0,4,0,0"
                                            Text="Only add repositories from authors you trust."/>
 
@@ -801,135 +747,121 @@
                                                     CornerRadius="6"
                                                     Padding="12,9"
                                                     Margin="0,0,0,6">
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
+                                                <Grid ColumnDefinitions="*,Auto">
                                                     <StackPanel Margin="0,0,12,0">
                                                         <TextBlock Text="{Binding Label}"
-                                                                   Style="{StaticResource BodyText}"
+                                                                   Classes="body"
                                                                    FontWeight="SemiBold"/>
                                                         <TextBlock Text="{Binding Url}"
-                                                                   Style="{StaticResource Muted}"
+                                                                   Classes="muted"
                                                                    FontSize="11"
                                                                    Foreground="{StaticResource TextFaint}"
                                                                    TextTrimming="CharacterEllipsis"
                                                                    TextWrapping="NoWrap"
-                                                                   ToolTip="{Binding Url}"
+                                                                   ToolTip.Tip="{Binding Url}"
                                                                    Margin="0,1,0,0"/>
                                                         <TextBlock Text="{Binding StatusText}"
-                                                                   Style="{StaticResource Muted}"
+                                                                   Classes="muted"
                                                                    FontSize="11"
                                                                    Foreground="{Binding StatusBrush}"
                                                                    Margin="0,3,0,0"/>
                                                     </StackPanel>
                                                     <Button Grid.Column="1"
-                                                            Style="{StaticResource GhostButton}"
+                                                            Classes="ghost"
                                                             Content="Remove"
                                                             VerticalAlignment="Center"
-                                                            Visibility="{Binding CanRemove, Converter={StaticResource NullToCollapsed}}"
+                                                            IsVisible="{Binding CanRemove}"
                                                             Command="{Binding DataContext.RemoveCatalogCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                             CommandParameter="{Binding}"/>
                                                     <TextBlock Grid.Column="1"
                                                                Text="Included by default"
-                                                               Style="{StaticResource Muted}"
+                                                               Classes="muted"
                                                                FontSize="11"
                                                                VerticalAlignment="Center"
-                                                               Visibility="{Binding IsOfficial, Converter={StaticResource NullToCollapsed}}"/>
+                                                               IsVisible="{Binding IsOfficial}"/>
                                                 </Grid>
                                             </Border>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
 
-                                <Grid Margin="0,6,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
+                                <Grid Margin="0,6,0,0" ColumnDefinitions="*,Auto">
                                     <Grid>
-                                        <TextBox Text="{Binding NewCatalogUrl, UpdateSourceTrigger=PropertyChanged}">
-                                            <TextBox.InputBindings>
-                                                <KeyBinding Key="Return"
+                                        <TextBox Text="{Binding NewCatalogUrl, Mode=TwoWay}">
+                                            <TextBox.KeyBindings>
+                                                <KeyBinding Gesture="Enter"
                                                             Command="{Binding AddCatalogCommand}"/>
-                                            </TextBox.InputBindings>
+                                            </TextBox.KeyBindings>
                                         </TextBox>
                                         <TextBlock Text="https://example.com/mods.json"
-                                                   Style="{StaticResource Muted}"
+                                                   Classes="muted"
                                                    Foreground="{StaticResource TextFaint}"
                                                    Margin="11,0,0,0"
                                                    VerticalAlignment="Center"
                                                    IsHitTestVisible="False"
-                                                   Visibility="{Binding NewCatalogUrl, Converter={StaticResource NullToVisible}}"/>
+                                                   IsVisible="{Binding NewCatalogUrl, Converter={StaticResource HasNoValue}}"/>
                                     </Grid>
                                     <Button Grid.Column="1"
-                                            Style="{StaticResource SecondaryButton}"
+                                            Classes="secondary"
                                             Content="Add repository"
                                             Margin="8,0,0,0"
                                             Command="{Binding AddCatalogCommand}"/>
                                 </Grid>
                                 <TextBlock Text="{Binding CatalogInputError}"
-                                           Style="{StaticResource Muted}"
+                                           Classes="muted"
                                            Margin="0,6,0,0"
                                            Foreground="{StaticResource Warning}"
-                                           Visibility="{Binding CatalogInputError, Converter={StaticResource NullToCollapsed}}"/>
+                                           IsVisible="{Binding CatalogInputError, Converter={StaticResource HasValue}}"/>
 
                                 <CheckBox x:Name="ShowSafetyWarnings"
-                                          Style="{StaticResource Switch}"
+                                          Classes="switch"
                                           Margin="0,14,0,0"
                                           Content="Show safety warning when installing third party mods"
-                                          Checked="OnShowSafetyWarningsChanged"
-                                          Unchecked="OnShowSafetyWarningsChanged"/>
+                                          IsCheckedChanged="OnShowSafetyWarningsChanged"/>
                             </StackPanel>
                         </Border>
 
-                        <Border Style="{StaticResource Card}"
+                        <Border Classes="card"
                                 Margin="0,0,0,12">
                             <StackPanel>
                                 <TextBlock Text="Updates"
-                                           Style="{StaticResource Heading}"/>
-                                <TextBlock Style="{StaticResource Muted}"
+                                           Classes="heading"/>
+                                <TextBlock Classes="muted"
                                            Margin="0,4,0,0"
-                                           Text="The manager can look for updates of the mod loader, installed mods and the manager itself."/>
+                                           Text="Notify when updates for the Mod Loader, Manager or installed mods are available."/>
                                 <CheckBox x:Name="CheckOnStart"
-                                          Style="{StaticResource Switch}"
+                                          Classes="switch"
                                           Margin="0,12,0,0"
                                           Content="Check for updates on startup"
-                                          Checked="OnCheckOnStartChanged"
-                                          Unchecked="OnCheckOnStartChanged"/>
+                                          IsCheckedChanged="OnCheckOnStartChanged"/>
 
                                 <Border Background="{StaticResource SurfaceAlt}"
                                         CornerRadius="6"
                                         Padding="12,9"
                                         Margin="0,14,0,0"
-                                        Visibility="{Binding ManagerHasUpdate, Converter={StaticResource NullToCollapsed}}">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
+                                        IsVisible="{Binding ManagerHasUpdate}">
+                                    <Grid ColumnDefinitions="*,Auto">
                                         <StackPanel Margin="0,0,12,0">
                                             <TextBlock Text="{Binding ManagerUpdateSummary}"
-                                                       Style="{StaticResource BodyText}"
+                                                       Classes="body"
                                                        FontWeight="SemiBold"/>
                                             <TextBlock Text="{Binding ManagerUpdateNotes}"
-                                                       Style="{StaticResource Muted}"
+                                                       Classes="muted"
                                                        Margin="0,6,0,0"
-                                                       Visibility="{Binding HasManagerUpdateNotes, Converter={StaticResource NullToCollapsed}}"/>
-                                            <TextBlock Style="{StaticResource Muted}"
+                                                       IsVisible="{Binding HasManagerUpdateNotes}"/>
+                                            <TextBlock Classes="muted"
                                                        Margin="0,6,0,0"
                                                        Text="Updating will automatically restart the Mod Manager."/>
-                                            <Button Style="{StaticResource LinkButton}"
+                                            <Button Classes="link"
                                                     FontSize="11"
                                                     Content="Release page"
                                                     Margin="0,6,0,0"
-                                                    ToolTip="{Binding ManagerUpdatePageUrl}"
+                                                    ToolTip.Tip="{Binding ManagerUpdatePageUrl}"
                                                     Command="{Binding OpenCommand}"
                                                     CommandParameter="{Binding ManagerUpdatePageUrl}"/>
                                         </StackPanel>
                                         <Button Grid.Column="1"
-                                                Style="{StaticResource PrimaryButton}"
+                                                Classes="primary"
                                                 VerticalAlignment="Top"
                                                 Content="Update now"
                                                 Command="{Binding UpdateManagerCommand}"/>
@@ -938,35 +870,63 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Style="{StaticResource Card}">
+                        <Border Classes="card"
+                                Margin="0,0,0,12"
+                                IsVisible="{Binding ShowDesktopMenu}">
+                            <StackPanel>
+                                <TextBlock Text="Application menu"
+                                           Classes="heading"/>
+                                <Grid Margin="0,4,0,0" ColumnDefinitions="*,Auto">
+                                    <TextBlock Classes="muted"
+                                               Margin="0,0,12,0"
+                                               VerticalAlignment="Center"
+                                               Text="{Binding DesktopMenuText}"/>
+                                    <StackPanel Grid.Column="1"
+                                                Orientation="Horizontal"
+                                                Spacing="8"
+                                                VerticalAlignment="Top">
+                                        <Button Classes="secondary"
+                                                Content="{Binding AddToMenuLabel}"
+                                                IsVisible="{Binding CanAddToMenu}"
+                                                Command="{Binding AddToMenuCommand}"/>
+                                        <Button Classes="ghost"
+                                                Content="Remove from menu"
+                                                IsVisible="{Binding IsInMenu}"
+                                                Command="{Binding RemoveFromMenuCommand}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Classes="card">
                             <StackPanel>
                                 <TextBlock Text="Folders and reporting"
-                                           Style="{StaticResource Heading}"/>
+                                           Classes="heading"/>
                                 <WrapPanel Margin="0,12,0,0">
-                                    <Button Style="{StaticResource SecondaryButton}"
+                                    <Button Classes="secondary"
                                             Content="Game folder"
                                             Margin="0,0,8,8"
                                             Command="{Binding OpenFolderCommand}"
                                             CommandParameter="Game"/>
-                                    <Button Style="{StaticResource SecondaryButton}"
+                                    <Button Classes="secondary"
                                             Content="Mods folder"
                                             Margin="0,0,8,8"
                                             Command="{Binding OpenFolderCommand}"
                                             CommandParameter="Mods"/>
-                                    <Button Style="{StaticResource SecondaryButton}"
+                                    <Button Classes="secondary"
                                             Content="Quarantine"
                                             Margin="0,0,8,8"
-                                            ToolTip="Everything the manager has removed is kept here"
+                                            ToolTip.Tip="Old files. Usually safe to delete"
                                             Command="{Binding OpenFolderCommand}"
                                             CommandParameter="Quarantine"/>
-                                    <Button Style="{StaticResource SecondaryButton}"
+                                    <Button Classes="secondary"
                                             Content="Copy report"
                                             Margin="0,0,8,8"
-                                            ToolTip="Copies a summary of this install to the clipboard, for a bug report"
+                                            ToolTip.Tip="Copies a debugging report to the clipboard"
                                             Command="{Binding CopyReportCommand}"/>
                                 </WrapPanel>
                                 <TextBlock x:Name="ManagerVersionLabel"
-                                           Style="{StaticResource Muted}"
+                                           Classes="muted"
                                            Margin="0,4,0,0"/>
                             </StackPanel>
                         </Border>
@@ -975,30 +935,21 @@
             </Grid>
         </Grid>
 
-        <!-- Status bar -->
         <Border Grid.Row="2"
                 Background="{StaticResource Surface}"
                 BorderBrush="{StaticResource BorderBrushSoft}"
                 BorderThickness="0,1,0,0"
                 Padding="20,9">
-            <Grid MinHeight="16">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+            <Grid MinHeight="16" ColumnDefinitions="*,Auto">
                 <TextBlock Text="{Binding Status}"
-                           Style="{StaticResource Muted}"
+                           Classes="muted"
                            TextTrimming="CharacterEllipsis"
                            TextWrapping="NoWrap"
                            VerticalAlignment="Center"/>
                 <ProgressBar Grid.Column="1"
-                             Width="120"
-                             Height="3"
+                             Classes="busy"
                              IsIndeterminate="True"
-                             Background="Transparent"
-                             BorderThickness="0"
-                             Foreground="{StaticResource Accent}"
-                             Visibility="{Binding Busy, Converter={StaticResource NullToCollapsed}}"/>
+                             IsVisible="{Binding Busy}"/>
             </Grid>
         </Border>
     </Grid>

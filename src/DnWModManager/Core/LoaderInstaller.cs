@@ -2,13 +2,17 @@ namespace DnWModManager.Core;
 
 public static class LoaderInstaller
 {
-    private const string ProxyName = "winhttp.dll";
-
     public static InstallReport Install(StagedPackage package, GameInstall install, Quarantine quarantine, bool isUpdate)
     {
         string source = FindLoaderRoot(package.Root)
                         ?? throw new InvalidOperationException(
                             "This package does not look like a DnW Mod Loader release.");
+
+        if (install.Build == GameBuild.Linux
+            && (!File.Exists(Path.Combine(source, GameInstall.LinuxProxyName)) || !File.Exists(Path.Combine(source, GameInstall.LinuxLauncherName))))
+            throw new InvalidOperationException(
+                "This DnW Mod Loader release is missing the Linux files (" + GameInstall.LinuxLauncherName + ", " + GameInstall.LinuxProxyName
+                + ").");
 
         var report = new InstallReport();
 
@@ -24,15 +28,21 @@ public static class LoaderInstaller
         report.Installed.Add("DnWModLoader");
 
         // Doorstop proxy
-        string stagedProxy = Path.Combine(source, ProxyName);
+        string stagedProxy = Path.Combine(source, install.DoorstopProxyName);
         if (File.Exists(stagedProxy))
         {
             File.Copy(stagedProxy, install.DoorstopProxyPath, overwrite: true);
-            report.Installed.Add(ProxyName);
+            report.Installed.Add(install.DoorstopProxyName);
         }
 
         // Doorstop config
-        if (!File.Exists(install.DoorstopConfigPath))
+        if (install.Build == GameBuild.Linux)
+        {
+            File.Copy(Path.Combine(source, GameInstall.LinuxLauncherName), install.DoorstopConfigPath, overwrite: true);
+            Platform.MakeExecutable(install.DoorstopConfigPath);
+            report.Installed.Add(GameInstall.LinuxLauncherName);
+        }
+        else if (!File.Exists(install.DoorstopConfigPath))
         {
             string stagedConfig = Path.Combine(source, "doorstop_config.ini");
             if (File.Exists(stagedConfig)) File.Copy(stagedConfig, install.DoorstopConfigPath);

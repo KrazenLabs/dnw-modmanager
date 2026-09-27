@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using Microsoft.Win32.SafeHandles;
@@ -27,12 +28,12 @@ public static class FolderPermissions
     {
         if (install is null || !Directory.Exists(install.GameDirectory)) return FolderAccess.Unknown;
 
-        using var token = Elevation.IsElevated ? Elevation.OpenStandardUserToken() : null;
+        using var token = Platform.IsWindows && Elevation.IsElevated ? Elevation.OpenStandardUserToken() : null;
 
         var result = FolderAccess.Writable;
         foreach (string folder in CheckedFolders(install).Where(Directory.Exists))
         {
-            var access = token is null ? Probe(folder) : CheckAccess(folder, token);
+            var access = token is null || !Platform.IsWindows ? Probe(folder) : CheckAccess(folder, token);
             if (access == FolderAccess.Denied) return FolderAccess.Denied;
             if (access == FolderAccess.Unknown) result = FolderAccess.Unknown;
         }
@@ -43,9 +44,12 @@ public static class FolderPermissions
     {
         if (await Task.Run(() => Check(install)).ConfigureAwait(false) != FolderAccess.Denied) return true;
 
+        if (!Platform.IsWindows)
+            throw new IOException("Missing write permission for the game directory " + install.GameDirectory);
+
         if (Elevation.IsElevated)
         {
-            await Task.Run(() => Grant(install.GameDirectory)).ConfigureAwait(false);
+            await Task.Run(() => { if (Platform.IsWindows) Grant(install.GameDirectory); }).ConfigureAwait(false);
         }
         else
         {
@@ -61,6 +65,7 @@ public static class FolderPermissions
         return true;
     }
 
+    [SupportedOSPlatform("windows")]
     public static int GrantFromCommandLine(string gameDirectory)
     {
         try
@@ -78,6 +83,7 @@ public static class FolderPermissions
         }
     }
 
+    [SupportedOSPlatform("windows")]
     public static void Grant(string gameDirectory)
     {
         if (!GameInstall.LooksLikeGameDirectory(gameDirectory))
@@ -122,6 +128,7 @@ public static class FolderPermissions
         }
     }
 
+    [SupportedOSPlatform("windows")]
     internal static FolderAccess CheckAccess(string directory, SafeAccessTokenHandle token)
     {
         try
@@ -164,6 +171,7 @@ public static class FolderPermissions
         install.UserDataDirectory,
     };
 
+    [SupportedOSPlatform("windows")]
     private static void AddRule(DirectoryInfo directory, FileSystemAccessRule rule)
     {
         var security = directory.GetAccessControl(AccessControlSections.Access);

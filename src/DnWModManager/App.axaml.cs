@@ -1,8 +1,13 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Windows;
-using System.Windows.Threading;
+using System.Runtime.Versioning;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using DnWModManager.Core;
+using DnWModManager.ViewModels;
+using DnWModManager.Views;
 
 namespace DnWModManager;
 
@@ -21,42 +26,52 @@ public partial class App : Application
     public static string UpdatedFromVersion { get; private set; }
     public static string GameDirectoryArgument { get; private set; }
 
-    protected override void OnStartup(StartupEventArgs e)
+    public override void Initialize() => AvaloniaXamlLoader.Load(this);
+
+    public override void OnFrameworkInitializationCompleted()
     {
-        string grantFolder = ArgumentAfter(e.Args, FolderPermissions.GrantArgument);
-        if (grantFolder is not null)
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            Environment.ExitCode = FolderPermissions.GrantFromCommandLine(grantFolder);
-            Shutdown(Environment.ExitCode);
-            return;
+            _ = Task.Run(() => ManagerUpdater.RemoveLeftovers());
+            Dispatcher.UIThread.UnhandledException += OnUnhandledException;
+            desktop.MainWindow = new MainWindow();
         }
 
-        string settingsPath = ArgumentAfter(e.Args, SettingsOption);
+        base.OnFrameworkInitializationCompleted();
+    }
+
+    public static int? RunCommandLine(string[] args)
+    {
+        if (HasFlag(args, "version"))
+        {
+            AttachParentConsole();
+            Console.WriteLine(ManagerUpdater.VersionLine(Version));
+            return 0;
+        }
+
+        string grantFolder = ArgumentAfter(args, FolderPermissions.GrantArgument);
+        if (grantFolder is not null)
+            return Platform.IsWindows ? FolderPermissions.GrantFromCommandLine(grantFolder) : 1;
+
+        string settingsPath = ArgumentAfter(args, SettingsOption);
         if (!string.IsNullOrWhiteSpace(settingsPath)) ManagerSettings.OverridePath = settingsPath;
 
         // Show mod report and apply fixes
-        if (HasFlag(e.Args, "report") || HasFlag(e.Args, "fix")
-            || ArgumentAfter(e.Args, "--install") is not null || ArgumentAfter(e.Args, "--uninstall") is not null)
+        if (HasFlag(args, "report") || HasFlag(args, "fix")
+            || ArgumentAfter(args, "--install") is not null || ArgumentAfter(args, "--uninstall") is not null)
         {
-            RunConsole(e.Args).GetAwaiter().GetResult();
-            Shutdown(0);
-            return;
+            RunConsole(args).GetAwaiter().GetResult();
+            return 0;
         }
 
-        UpdatedFromVersion = ArgumentAfter(e.Args, ManagerUpdater.UpdatedArgument);
-        GameDirectoryArgument = ArgumentAfter(e.Args, GameOption);
-        _ = Task.Run(() => ManagerUpdater.RemoveLeftovers());
-
-        DispatcherUnhandledException += OnUnhandledException;
-        base.OnStartup(e);
-
-        MainWindow = new MainWindow();
-        MainWindow.Show();
+        UpdatedFromVersion = ArgumentAfter(args, ManagerUpdater.UpdatedArgument);
+        GameDirectoryArgument = ArgumentAfter(args, GameOption);
+        return null;
     }
 
     private static async Task RunConsole(string[] args)
     {
-        AttachConsole(AttachParentProcess);
+        AttachParentConsole();
 
         string directory = ArgumentAfter(args, GameOption) ?? ManagerSettings.Load().GameDirectory;
         var install = !string.IsNullOrWhiteSpace(directory) && GameInstall.LooksLikeGameDirectory(directory)
@@ -65,7 +80,7 @@ public partial class App : Application
 
         if (install is null)
         {
-            Console.Error.WriteLine("Drag'n Wash was not found. Pass --game \"<folder with DragNWash.exe>\".");
+            Console.Error.WriteLine("Drag'n Wash was not found. Pass --game \"<game folder>\".");
             return;
         }
 
@@ -100,7 +115,7 @@ public partial class App : Application
             if (staged.Layout == PackageLayout.LoaderRelease)
             {
                 LoaderInstaller.Install(staged, install, quarantine, isUpdate: install.LoaderInstalled);
-                Console.WriteLine("  installed the DnW Mod Loader");
+                Console.WriteLine("  installed the DnW Mod Loader (" + install.BuildLabel + ")");
             }
             else
             {
@@ -193,17 +208,24 @@ public partial class App : Application
 
     private void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
-        MessageBox.Show(
+        var owner = (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+        _ = MessageDialog.ShowAsync(owner,
             "The mod manager hit an unexpected error:" + Environment.NewLine + Environment.NewLine
             + e.Exception.GetType().Name + ": " + e.Exception.Message + Environment.NewLine + Environment.NewLine
-            + "If it keeps happening, please report it with the output of DnWModManager.exe --report.",
-            "DnW Mod Manager", MessageBoxButton.OK, MessageBoxImage.Error);
+            + "If it keeps happening, please report it with the output of " + ManagerUpdater.ExecutableName + " --report.",
+            "DnW Mod Manager", MessageButtons.Ok, MessageIcon.Error);
 
         e.Handled = true;
     }
 
+    private static void AttachParentConsole()
+    {
+        if (Platform.IsWindows) AttachConsole(AttachParentProcess);
+    }
+
     private const uint AttachParentProcess = 0xFFFFFFFF;
 
+    [SupportedOSPlatform("windows")]
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool AttachConsole(uint processId);
 }

@@ -1,8 +1,20 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using Avalonia.Threading;
 
 namespace DnWModManager.ViewModels;
+
+public static class CommandManager
+{
+    public static event EventHandler RequerySuggested;
+
+    public static void InvalidateRequerySuggested()
+    {
+        if (Dispatcher.UIThread.CheckAccess()) RequerySuggested?.Invoke(null, EventArgs.Empty);
+        else Dispatcher.UIThread.Post(() => RequerySuggested?.Invoke(null, EventArgs.Empty));
+    }
+}
 
 public abstract class ObservableObject : INotifyPropertyChanged
 {

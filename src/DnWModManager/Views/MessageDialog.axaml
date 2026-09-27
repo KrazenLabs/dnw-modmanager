@@ -1,0 +1,48 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="DnWModManager.Views.MessageDialog"
+        Width="480"
+        MaxHeight="640"
+        SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        Icon="/Assets/app.ico">
+
+    <Grid RowDefinitions="*,Auto">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <Grid ColumnDefinitions="Auto,*" Margin="22,22,22,20">
+                <Border x:Name="IconShell"
+                        Width="36"
+                        Height="36"
+                        CornerRadius="18"
+                        VerticalAlignment="Top"
+                        Margin="0,0,14,0">
+                    <TextBlock x:Name="IconText"
+                               FontSize="20"
+                               FontWeight="Bold"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Border>
+                <SelectableTextBlock x:Name="MessageText"
+                                     Grid.Column="1"
+                                     Margin="0,8,0,0"
+                                     FontSize="13"
+                                     Foreground="{StaticResource Text}"
+                                     SelectionBrush="{StaticResource Accent}"
+                                     TextWrapping="Wrap"/>
+            </Grid>
+        </ScrollViewer>
+
+        <Border Grid.Row="1"
+                Background="{StaticResource Surface}"
+                BorderBrush="{StaticResource BorderBrushSoft}"
+                BorderThickness="0,1,0,0"
+                Padding="22,12">
+            <StackPanel x:Name="ButtonRow"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Spacing="8"/>
+        </Border>
+    </Grid>
+</Window>

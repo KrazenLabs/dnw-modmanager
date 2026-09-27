@@ -1,32 +1,29 @@
 using System.Globalization;
-using System.Windows;
-using System.Windows.Data;
+using Avalonia.Data;
+using Avalonia.Data.Converters;
 
 namespace DnWModManager.Views;
 
-public sealed class NullToCollapsedConverter : IValueConverter
+public sealed class HasValueConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        => value switch
-        {
-            null => Visibility.Collapsed,
-            string text => string.IsNullOrWhiteSpace(text) ? Visibility.Collapsed : Visibility.Visible,
-            bool flag => flag ? Visibility.Visible : Visibility.Collapsed,
-            int count => count > 0 ? Visibility.Visible : Visibility.Collapsed,
-            _ => Visibility.Visible,
-        };
+    public static bool HasValue(object value) => value switch
+    {
+        null => false,
+        string text => !string.IsNullOrWhiteSpace(text),
+        bool flag => flag,
+        int count => count > 0,
+        _ => true,
+    };
+
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) => HasValue(value);
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         => throw new NotSupportedException();
 }
-public sealed class NullToVisibleConverter : IValueConverter
-{
-    private static readonly NullToCollapsedConverter Inner = new();
 
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        => (Visibility)Inner.Convert(value, targetType, parameter, culture) == Visibility.Visible
-            ? Visibility.Collapsed
-            : Visibility.Visible;
+public sealed class HasNoValueConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) => !HasValueConverter.HasValue(value);
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         => throw new NotSupportedException();
@@ -38,7 +35,7 @@ public sealed class EqualsConverter : IValueConverter
         => value?.ToString() == parameter?.ToString();
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        => value is true ? parameter : Binding.DoNothing;
+        => value is true ? Enum.Parse(targetType, parameter?.ToString() ?? "") : BindingOperations.DoNothing;
 }
 
 public sealed class SeverityBrushConverter : IValueConverter

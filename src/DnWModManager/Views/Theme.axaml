@@ -1,0 +1,512 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:DnWModManager.Views">
+
+    <Styles.Resources>
+        <views:HasValueConverter x:Key="HasValue"/>
+        <views:HasNoValueConverter x:Key="HasNoValue"/>
+        <views:EqualsConverter x:Key="Equals"/>
+        <views:LogLevelBrushConverter x:Key="LogLevelBrush"/>
+        <views:SeverityBrushConverter x:Key="SeverityBrush"/>
+
+        <Color x:Key="BgColor">#13131A</Color>
+        <Color x:Key="SurfaceColor">#1B1B23</Color>
+        <Color x:Key="SurfaceAltColor">#23232E</Color>
+        <Color x:Key="BorderColor">#2F2F3D</Color>
+        <Color x:Key="AccentColor">#EC2194</Color>
+        <Color x:Key="AccentDeepColor">#7C2EC8</Color>
+
+        <SolidColorBrush x:Key="Bg" Color="{StaticResource BgColor}"/>
+        <SolidColorBrush x:Key="Surface" Color="{StaticResource SurfaceColor}"/>
+        <SolidColorBrush x:Key="SurfaceAlt" Color="{StaticResource SurfaceAltColor}"/>
+        <SolidColorBrush x:Key="BorderBrushSoft" Color="{StaticResource BorderColor}"/>
+        <SolidColorBrush x:Key="Accent" Color="{StaticResource AccentColor}"/>
+        <SolidColorBrush x:Key="AccentDeep" Color="{StaticResource AccentDeepColor}"/>
+        <SolidColorBrush x:Key="Text" Color="#EDEDF2"/>
+        <SolidColorBrush x:Key="TextMuted" Color="#8A8A9A"/>
+        <SolidColorBrush x:Key="TextFaint" Color="#63636F"/>
+        <SolidColorBrush x:Key="Success" Color="#3FBF7F"/>
+        <SolidColorBrush x:Key="Warning" Color="#E8A33D"/>
+        <SolidColorBrush x:Key="Danger" Color="#E5484D"/>
+        <SolidColorBrush x:Key="ScrollThumb" Color="#3A3A48"/>
+        <SolidColorBrush x:Key="WarningSoft" Color="#33E8A33D"/>
+
+        <LinearGradientBrush x:Key="AccentGradient" StartPoint="0%,0%" EndPoint="100%,100%">
+            <GradientStop Color="{StaticResource AccentColor}" Offset="0"/>
+            <GradientStop Color="{StaticResource AccentDeepColor}" Offset="1"/>
+        </LinearGradientBrush>
+
+        <CornerRadius x:Key="Radius">8</CornerRadius>
+
+        <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, DejaVu Sans Mono, Liberation Mono, Noto Sans Mono, monospace</FontFamily>
+    </Styles.Resources>
+
+    <Style Selector="Window">
+        <Setter Property="Background" Value="{StaticResource Bg}"/>
+        <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        <Setter Property="FontSize" Value="13"/>
+    </Style>
+
+    <Style Selector="TextBlock.body, TextBlock.title, TextBlock.heading, TextBlock.muted, TextBlock.mono">
+        <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+
+    <Style Selector="TextBlock.title">
+        <Setter Property="FontSize" Value="19"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="TextWrapping" Value="NoWrap"/>
+    </Style>
+
+    <Style Selector="TextBlock.heading">
+        <Setter Property="FontSize" Value="15"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+
+    <Style Selector="TextBlock.muted">
+        <Setter Property="Foreground" Value="{StaticResource TextMuted}"/>
+        <Setter Property="FontSize" Value="12"/>
+    </Style>
+
+    <Style Selector="TextBlock.mono">
+        <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+        <Setter Property="FontSize" Value="12"/>
+    </Style>
+
+    <Style Selector="Button">
+        <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        <Setter Property="Background" Value="{StaticResource SurfaceAlt}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="Padding" Value="14,7"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="RenderTransform" Value="none"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Shell"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{StaticResource Radius}">
+                    <ContentPresenter Name="Label"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Foreground="{TemplateBinding Foreground}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      Margin="{TemplateBinding Padding}"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="Button:pressed">
+        <Setter Property="RenderTransform" Value="none"/>
+    </Style>
+
+    <Style Selector="Button:pointerover /template/ Border#Shell">
+        <Setter Property="Opacity" Value="0.86"/>
+    </Style>
+
+    <Style Selector="Button:pressed /template/ Border#Shell">
+        <Setter Property="Opacity" Value="0.7"/>
+    </Style>
+
+    <Style Selector="Button:disabled /template/ Border#Shell">
+        <Setter Property="Opacity" Value="0.35"/>
+    </Style>
+
+    <Style Selector="Button:disabled">
+        <Setter Property="Cursor" Value="Arrow"/>
+    </Style>
+
+    <Style Selector="Button.primary">
+        <Setter Property="Background" Value="{StaticResource AccentGradient}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+
+    <Style Selector="Button.ghost, Button.link">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Foreground" Value="{StaticResource TextMuted}"/>
+        <Setter Property="Padding" Value="8,4"/>
+        <Setter Property="FontSize" Value="12"/>
+    </Style>
+
+    <Style Selector="Button.link">
+        <Setter Property="Foreground" Value="{StaticResource Accent}"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <TextBlock Name="LinkText"
+                           Background="Transparent"
+                           Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}"
+                           Foreground="{TemplateBinding Foreground}"
+                           FontSize="{TemplateBinding FontSize}"
+                           TextTrimming="CharacterEllipsis"/>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="Button.link:pointerover /template/ TextBlock#LinkText">
+        <Setter Property="TextDecorations" Value="Underline"/>
+    </Style>
+
+    <Style Selector="Button.link.path">
+        <Setter Property="Foreground" Value="{StaticResource TextFaint}"/>
+        <Setter Property="FontSize" Value="11"/>
+    </Style>
+
+    <Style Selector="RadioButton.option">
+        <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid Background="Transparent" ColumnDefinitions="Auto,*">
+                    <Border Name="Ring"
+                            Width="18"
+                            Height="18"
+                            CornerRadius="9"
+                            VerticalAlignment="Top"
+                            Margin="0,1,11,0"
+                            Background="{StaticResource SurfaceAlt}"
+                            BorderBrush="{StaticResource BorderBrushSoft}"
+                            BorderThickness="1">
+                        <Ellipse Name="Dot" Width="8" Height="8" Fill="White" IsVisible="False"/>
+                    </Border>
+                    <ContentPresenter Name="Label"
+                                      Grid.Column="1"
+                                      VerticalAlignment="Center"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"/>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="RadioButton.option:checked /template/ Border#Ring">
+        <Setter Property="Background" Value="{StaticResource AccentGradient}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+
+    <Style Selector="RadioButton.option:checked /template/ Ellipse#Dot">
+        <Setter Property="IsVisible" Value="True"/>
+    </Style>
+
+    <Style Selector="RadioButton.option:pointerover /template/ Border#Ring">
+        <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+    </Style>
+
+    <Style Selector="RadioButton.option:disabled">
+        <Setter Property="Opacity" Value="0.45"/>
+        <Setter Property="Cursor" Value="Arrow"/>
+    </Style>
+
+    <Style Selector="RadioButton.nav">
+        <Setter Property="Foreground" Value="{StaticResource TextMuted}"/>
+        <Setter Property="Background" Value="{StaticResource Danger}"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Margin" Value="8,1"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Shell"
+                        Background="Transparent"
+                        CornerRadius="{StaticResource Radius}"
+                        Padding="12,9">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <ContentPresenter Name="Label"
+                                          VerticalAlignment="Center"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"/>
+                        <Border Grid.Column="1"
+                                Name="Badge"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="9"
+                                MinWidth="18"
+                                Height="18"
+                                Padding="5,0"
+                                IsVisible="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource HasValue}}">
+                            <TextBlock Text="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"
+                                       Foreground="White"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                        </Border>
+                    </Grid>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="RadioButton.nav:pointerover">
+        <Setter Property="Foreground" Value="{StaticResource Text}"/>
+    </Style>
+
+    <Style Selector="RadioButton.nav:pointerover /template/ Border#Shell">
+        <Setter Property="Background" Value="{StaticResource SurfaceAlt}"/>
+    </Style>
+
+    <Style Selector="RadioButton.nav:checked">
+        <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+
+    <Style Selector="RadioButton.nav:checked /template/ Border#Shell">
+        <Setter Property="Background" Value="{StaticResource SurfaceAlt}"/>
+    </Style>
+
+    <Style Selector="CheckBox.switch">
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid Background="Transparent" ColumnDefinitions="Auto,Auto">
+                    <Border Name="Track"
+                            Width="38"
+                            Height="22"
+                            CornerRadius="11"
+                            VerticalAlignment="Center"
+                            Background="{StaticResource SurfaceAlt}"
+                            BorderBrush="{StaticResource BorderBrushSoft}"
+                            BorderThickness="1">
+                        <Ellipse Name="Knob"
+                                 Width="16"
+                                 Height="16"
+                                 Fill="{StaticResource TextMuted}"
+                                 HorizontalAlignment="Left"
+                                 VerticalAlignment="Center"
+                                 Margin="2,0,0,0"/>
+                    </Border>
+                    <ContentPresenter Name="Label"
+                                      Grid.Column="1"
+                                      Margin="10,0,0,0"
+                                      VerticalAlignment="Center"
+                                      Foreground="{TemplateBinding Foreground}"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      IsVisible="{TemplateBinding Content, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="CheckBox.switch:checked /template/ Border#Track">
+        <Setter Property="Background" Value="{StaticResource AccentGradient}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+
+    <Style Selector="CheckBox.switch:checked /template/ Ellipse#Knob">
+        <Setter Property="Fill" Value="White"/>
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+        <Setter Property="Margin" Value="0,0,3,0"/>
+    </Style>
+
+    <Style Selector="CheckBox.switch:disabled /template/ Border#Track">
+        <Setter Property="Opacity" Value="0.35"/>
+    </Style>
+
+    <Style Selector="CheckBox.switch:disabled">
+        <Setter Property="Cursor" Value="Arrow"/>
+    </Style>
+
+    <Style Selector="Border.card">
+        <Setter Property="Background" Value="{StaticResource Surface}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="{StaticResource Radius}"/>
+        <Setter Property="Padding" Value="16"/>
+    </Style>
+
+    <Style Selector="Border.row">
+        <Setter Property="Background" Value="{StaticResource Surface}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="{StaticResource Radius}"/>
+        <Setter Property="Padding" Value="14,12"/>
+        <Setter Property="Margin" Value="0,0,0,8"/>
+    </Style>
+
+    <Style Selector="Border.pill">
+        <Setter Property="Background" Value="{StaticResource SurfaceAlt}"/>
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="Padding" Value="8,2"/>
+    </Style>
+
+    <Style Selector="TextBox">
+        <Setter Property="Background" Value="{StaticResource SurfaceAlt}"/>
+        <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        <Setter Property="CaretBrush" Value="{StaticResource Text}"/>
+        <Setter Property="SelectionBrush" Value="{StaticResource Accent}"/>
+        <Setter Property="SelectionForegroundBrush" Value="White"/>
+        <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Padding" Value="9,6"/>
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+
+    <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="{StaticResource SurfaceAlt}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}"/>
+    </Style>
+
+    <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="{StaticResource SurfaceAlt}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <Style Selector="TextBox:pointerover, TextBox:focus">
+        <Setter Property="Foreground" Value="{StaticResource Text}"/>
+    </Style>
+
+    <Style Selector="ScrollViewer">
+        <Setter Property="AllowAutoHide" Value="False"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="*,Auto">
+                    <ScrollContentPresenter Name="PART_ContentPresenter"
+                                            Background="{TemplateBinding Background}"
+                                            HorizontalSnapPointsType="{TemplateBinding HorizontalSnapPointsType}"
+                                            VerticalSnapPointsType="{TemplateBinding VerticalSnapPointsType}"
+                                            HorizontalSnapPointsAlignment="{TemplateBinding HorizontalSnapPointsAlignment}"
+                                            VerticalSnapPointsAlignment="{TemplateBinding VerticalSnapPointsAlignment}"
+                                            Padding="{TemplateBinding Padding}"
+                                            ScrollViewer.IsScrollInertiaEnabled="{TemplateBinding IsScrollInertiaEnabled}">
+                        <ScrollContentPresenter.GestureRecognizers>
+                            <ScrollGestureRecognizer CanHorizontallyScroll="{Binding CanHorizontallyScroll, ElementName=PART_ContentPresenter}"
+                                                     CanVerticallyScroll="{Binding CanVerticallyScroll, ElementName=PART_ContentPresenter}"
+                                                     IsScrollInertiaEnabled="{Binding (ScrollViewer.IsScrollInertiaEnabled), ElementName=PART_ContentPresenter}"/>
+                        </ScrollContentPresenter.GestureRecognizers>
+                    </ScrollContentPresenter>
+                    <ScrollBar Name="PART_HorizontalScrollBar" Orientation="Horizontal" Grid.Row="1"/>
+                    <ScrollBar Name="PART_VerticalScrollBar" Orientation="Vertical" Grid.Column="1"/>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="ScrollBar">
+        <Setter Property="AllowAutoHide" Value="False"/>
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
+    <Style Selector="ScrollBar:vertical, ScrollBar:horizontal">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="Transparent">
+                    <Track Name="PART_Track"
+                           Minimum="{TemplateBinding Minimum}"
+                           Maximum="{TemplateBinding Maximum}"
+                           Value="{TemplateBinding Value, Mode=TwoWay}"
+                           ViewportSize="{TemplateBinding ViewportSize}"
+                           Orientation="{TemplateBinding Orientation}"
+                           IsDirectionReversed="True">
+                        <Track.DecreaseButton>
+                            <RepeatButton Name="PART_PageUpButton" Classes="scrollpage" Focusable="False"/>
+                        </Track.DecreaseButton>
+                        <Track.IncreaseButton>
+                            <RepeatButton Name="PART_PageDownButton" Classes="scrollpage" Focusable="False"/>
+                        </Track.IncreaseButton>
+                        <Thumb Name="thumb" Classes="scrollthumb"/>
+                    </Track>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="ScrollBar:vertical">
+        <Setter Property="Width" Value="10"/>
+    </Style>
+
+    <Style Selector="ScrollBar:horizontal">
+        <Setter Property="Height" Value="10"/>
+    </Style>
+
+    <Style Selector="ScrollBar:horizontal /template/ Track#PART_Track">
+        <Setter Property="IsDirectionReversed" Value="False"/>
+    </Style>
+
+    <Style Selector="RepeatButton.scrollpage">
+        <Setter Property="Opacity" Value="0"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="Transparent"/>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="Thumb.scrollthumb">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="ThumbShape" Background="{StaticResource ScrollThumb}" CornerRadius="5"/>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="ScrollBar:vertical /template/ Thumb.scrollthumb /template/ Border#ThumbShape">
+        <Setter Property="Margin" Value="2,0"/>
+    </Style>
+
+    <Style Selector="ScrollBar:horizontal /template/ Thumb.scrollthumb /template/ Border#ThumbShape">
+        <Setter Property="Margin" Value="0,2"/>
+    </Style>
+
+    <Style Selector="ToolTip">
+        <Setter Property="Background" Value="{StaticResource SurfaceAlt}"/>
+        <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="9,6"/>
+        <Setter Property="MaxWidth" Value="380"/>
+        <Setter Property="FontSize" Value="12"/>
+    </Style>
+
+    <Style Selector="ListBox.log">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+
+    <Style Selector="ListBox.log ListBoxItem">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Padding" Value="6,1"/>
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                    <ContentPresenter Name="Row"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="ProgressBar.busy">
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="Height" Value="3"/>
+        <Setter Property="Width" Value="120"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Foreground" Value="{StaticResource Accent}"/>
+        <Setter Property="CornerRadius" Value="2"/>
+    </Style>
+
+</Styles>

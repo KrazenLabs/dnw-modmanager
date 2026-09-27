@@ -6,6 +6,7 @@ public sealed class LoaderState
 {
     public bool DoorstopProxyPresent { get; init; }
     public bool DoorstopConfigPresent { get; init; }
+    public bool LauncherExecutable { get; init; } = true;
     public bool AssemblyPresent { get; init; }
     public string Version { get; init; }
     public DoorstopConfig Doorstop { get; init; }
@@ -14,6 +15,7 @@ public sealed class LoaderState
     public bool Installed => DoorstopProxyPresent && DoorstopConfigPresent && AssemblyPresent;
 
     public bool Healthy => Installed
+                           && LauncherExecutable
                            && Doorstop is { Enabled: true }
                            && Doorstop.TargetsLoader
                            && MissingRuntimeFiles.Count == 0;
@@ -27,6 +29,7 @@ public sealed class ScanResult
     public required LoaderState Loader { get; init; }
     public required LoaderConfigFile Config { get; init; }
     public FolderAccess GameFolderAccess { get; init; }
+    public SteamLaunchOptions SteamOptions { get; init; }
 
     public List<InstalledMod> Mods { get; } = new();
     public List<RivalLoader> Rivals { get; } = new();
@@ -53,6 +56,9 @@ public static class ModScanner
             Loader = loader,
             Config = LoaderConfigFile.Load(install.LoaderConfigPath),
             GameFolderAccess = FolderPermissions.Check(install),
+            SteamOptions = install.Source == InstallSource.Steam && install.RequiredLaunchOption is not null
+                ? GameLauncher.ReadSteamLaunchOptions()
+                : null,
         };
 
         using var gameApi = new GameApi(install.ManagedDirectory);
@@ -281,7 +287,7 @@ public static class ModScanner
         {
             string path = Path.Combine(install.BepInExCoreDirectory, core);
             if (!File.Exists(path)) continue;
-            result.Rivals.Add(new RivalLoader("BepInEx", @"BepInEx\core\" + core, install.BepInExCoreDirectory, IsProxy: false));
+            result.Rivals.Add(new RivalLoader("BepInEx", Path.Combine("BepInEx", "core", core), install.BepInExCoreDirectory, IsProxy: false));
             break;
         }
     }
@@ -302,10 +308,13 @@ public static class ModScanner
     private static LoaderState ReadLoaderState(GameInstall install)
     {
         bool assemblyPresent = File.Exists(install.LoaderAssemblyPath);
+        bool configPresent = File.Exists(install.DoorstopConfigPath);
         var state = new LoaderState
         {
             DoorstopProxyPresent = File.Exists(install.DoorstopProxyPath),
-            DoorstopConfigPresent = File.Exists(install.DoorstopConfigPath),
+            DoorstopConfigPresent = configPresent,
+            LauncherExecutable = install.Build != GameBuild.Linux || !configPresent || Platform.IsWindows
+                                 || Platform.IsExecutable(install.DoorstopConfigPath),
             AssemblyPresent = assemblyPresent,
             Version = assemblyPresent ? ReadAssemblyVersion(install.LoaderAssemblyPath) : null,
             Doorstop = File.Exists(install.DoorstopConfigPath) ? DoorstopConfig.Load(install.DoorstopConfigPath) : null,

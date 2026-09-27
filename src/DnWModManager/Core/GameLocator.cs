@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
 
@@ -12,7 +13,7 @@ public static class GameLocator
     public static IReadOnlyList<Candidate> FindAll()
     {
         var found = new List<Candidate>();
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var seen = new HashSet<string>(Platform.PathComparer);
 
         void Consider(string directory, InstallSource source, string origin)
         {
@@ -50,8 +51,7 @@ public static class GameLocator
     private static IEnumerable<string> SteamLibraries()
     {
         var libraries = new List<string>();
-        string steam = SteamPath();
-        if (!string.IsNullOrEmpty(steam))
+        foreach (string steam in SteamRoots())
         {
             libraries.Add(steam);
             // libraryfolders.vdf lists every extra library
@@ -64,12 +64,61 @@ public static class GameLocator
                     libraries.Add(match.Groups[1].Value.Replace("\\\\", "\\"));
             }
         }
-        libraries.Add(@"C:\Program Files (x86)\Steam");
-        return libraries.Distinct(StringComparer.OrdinalIgnoreCase);
+        if (Platform.IsWindows) libraries.Add(@"C:\Program Files (x86)\Steam");
+        return libraries.Select(RealPath).Distinct(Platform.PathComparer);
     }
 
-    public static string SteamPath()
+    public static string SteamPath() => SteamRoots().FirstOrDefault();
+
+    private static IEnumerable<string> SteamRoots()
     {
+        if (Platform.IsWindows)
+        {
+            string windows = WindowsSteamPath();
+            if (windows is not null) yield return windows;
+            yield break;
+        }
+
+        var seen = new HashSet<string>(Platform.PathComparer);
+        foreach (string candidate in LinuxSteamRoots())
+        {
+            string real = RealPath(candidate);
+            if (!Directory.Exists(Path.Combine(real, "steamapps")) || !seen.Add(real)) continue;
+            yield return real;
+        }
+    }
+
+    private static IEnumerable<string> LinuxSteamRoots()
+    {
+        string home = Platform.HomeDirectory;
+        if (string.IsNullOrEmpty(home)) yield break;
+        string dataHome = Environment.GetEnvironmentVariable("XDG_DATA_HOME");
+        if (!string.IsNullOrWhiteSpace(dataHome) && Path.IsPathRooted(dataHome)) yield return Path.Combine(dataHome, "Steam");
+        yield return Path.Combine(home, ".steam", "steam");
+        yield return Path.Combine(home, ".local", "share", "Steam");
+        yield return Path.Combine(home, ".steam", "root");
+        yield return Path.Combine(home, ".var", "app", "com.valvesoftware.Steam", ".local", "share", "Steam");
+        yield return Path.Combine(home, "snap", "steam", "common", ".local", "share", "Steam");
+    }
+
+    private static string RealPath(string path)
+    {
+        try
+        {
+            string full = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar);
+            if (Platform.IsWindows || full.Length == 0) return full;
+            var target = new DirectoryInfo(full).ResolveLinkTarget(returnFinalTarget: true);
+            return target is null ? full : Path.GetFullPath(target.FullName).TrimEnd(Path.DirectorySeparatorChar);
+        }
+        catch
+        {
+            return path;
+        }
+    }
+
+    private static string WindowsSteamPath()
+    {
+        if (!Platform.IsWindows) return null;
         foreach (var (hive, key) in new[]
                  {
                      (RegistryHive.CurrentUser, @"Software\Valve\Steam"),
@@ -83,6 +132,7 @@ public static class GameLocator
         return null;
     }
 
+    [SupportedOSPlatform("windows")]
     private static string ReadRegistry(RegistryHive hive, string key, string name)
     {
         try

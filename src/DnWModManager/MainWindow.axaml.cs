@@ -1,29 +1,43 @@
-using System.Windows;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
+using Avalonia.VisualTree;
 using DnWModManager.Core;
 using DnWModManager.ViewModels;
+using DnWModManager.Views;
 
 namespace DnWModManager;
 
 public partial class MainWindow : Window
 {
-    private readonly MainViewModel _model = new();
+    private readonly MainViewModel _model;
     private bool _loadingSettings;
 
     public MainWindow()
     {
         InitializeComponent();
+        _model = new MainViewModel(new WindowDialogs(this));
         DataContext = _model;
 
-        Loaded += OnLoaded;
+        AddHandler(DragDrop.DragEnterEvent, OnResourceDragOver);
+        AddHandler(DragDrop.DragOverEvent, OnResourceDragOver);
+        AddHandler(DragDrop.DragLeaveEvent, OnResourceDragLeave);
+        AddHandler(DragDrop.DropEvent, OnResourceDrop);
+
+        Opened += OnOpened;
         Closed += (_, _) => _model.Dispose();
     }
 
-    private async void OnLoaded(object sender, RoutedEventArgs e)
+    public MainViewModel Model => _model;
+
+    private async void OnOpened(object sender, EventArgs e)
     {
         LoadSettings();
 
         ManagerVersionLabel.Text = "DnW Mod Manager " + App.Version
-                                  + "  ·  settings are saved in " + ManagerSettings.DefaultPath;
+                                  + "  ·  settings saved in " + ManagerSettings.DefaultPath;
 
         await _model.StartAsync();
     }
@@ -48,7 +62,7 @@ public partial class MainWindow : Window
 
     private void OnLaunchModeChanged(object sender, RoutedEventArgs e)
     {
-        if (_loadingSettings) return;
+        if (_loadingSettings || (sender as RadioButton)?.IsChecked != true) return;
         _model.Settings.LaunchMode = LaunchSteam.IsChecked == true ? LaunchMode.Steam : LaunchMode.Direct;
         _model.Settings.Save();
         _model.NotifySettingsChanged();
@@ -57,7 +71,7 @@ public partial class MainWindow : Window
     private void OnExtraArgsChanged(object sender, RoutedEventArgs e)
     {
         if (_loadingSettings) return;
-        _model.Settings.ExtraLaunchArguments = ExtraArgs.Text.Trim();
+        _model.Settings.ExtraLaunchArguments = (ExtraArgs.Text ?? "").Trim();
         _model.Settings.Save();
     }
 
@@ -82,24 +96,42 @@ public partial class MainWindow : Window
         _model.Settings.Save();
     }
 
+    private ResourceFolderViewModel DropTargetOf(DragEventArgs e)
+    {
+        for (var visual = e.Source as Visual; visual is not null; visual = visual.GetVisualParent())
+            if (visual is Control { DataContext: ResourceFolderViewModel target } control && control.Classes.Contains("dropzone") && control is Grid)
+                return target;
+        return null;
+    }
+
+    private ResourceFolderViewModel _hovered;
+
     private void OnResourceDragOver(object sender, DragEventArgs e)
     {
-        bool accept = e.Data.GetDataPresent(DataFormats.FileDrop) && _model.NotBusy;
-        e.Effects = accept ? DragDropEffects.Copy : DragDropEffects.None;
-        if ((sender as FrameworkElement)?.DataContext is ResourceFolderViewModel target) target.IsDropTarget = accept;
+        var target = DropTargetOf(e);
+        bool accept = target is not null && e.DataTransfer.Contains(DataFormat.File) && _model.NotBusy;
+        e.DragEffects = accept ? DragDropEffects.Copy : DragDropEffects.None;
+        SetHovered(accept ? target : null);
         e.Handled = true;
     }
 
-    private void OnResourceDragLeave(object sender, DragEventArgs e)
+    private void OnResourceDragLeave(object sender, DragEventArgs e) => SetHovered(null);
+
+    private void SetHovered(ResourceFolderViewModel target)
     {
-        if ((sender as FrameworkElement)?.DataContext is ResourceFolderViewModel target) target.IsDropTarget = false;
+        if (ReferenceEquals(_hovered, target)) return;
+        if (_hovered is not null) _hovered.IsDropTarget = false;
+        _hovered = target;
+        if (target is not null) target.IsDropTarget = true;
     }
 
     private async void OnResourceDrop(object sender, DragEventArgs e)
     {
-        if ((sender as FrameworkElement)?.DataContext is not ResourceFolderViewModel target) return;
-        target.IsDropTarget = false;
-        if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths) return;
+        var target = DropTargetOf(e);
+        SetHovered(null);
+        if (target is null) return;
+        var paths = e.DataTransfer.TryGetFiles()?.Select(item => item.TryGetLocalPath()).Where(path => !string.IsNullOrEmpty(path)).ToList();
+        if (paths is null || paths.Count == 0) return;
         e.Handled = true;
         await _model.ImportResourcesAsync(target, paths);
     }

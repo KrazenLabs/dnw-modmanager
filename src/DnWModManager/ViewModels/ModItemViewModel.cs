@@ -1,4 +1,4 @@
-using System.Windows.Media;
+using Avalonia.Media;
 using DnWModManager.Core;
 
 namespace DnWModManager.ViewModels;
@@ -92,7 +92,7 @@ public sealed class ModItemViewModel : ObservableObject
             if (!Mod.Kind.IsRunnable()) return "The loader cannot run a " + KindLabel + ".";
             if (Mod.DisabledByManifest) return "This mod is disabled in its own mod.json.";
             if (string.IsNullOrWhiteSpace(Mod.Id)) return "This mod has no id, so it cannot be disabled individually.";
-            if (!_main.CanEditLoaderConfig) return "Mods\\ModLoader.json could not be read, so it will not be written to.";
+            if (!_main.CanEditLoaderConfig) return Path.Combine("Mods", "ModLoader.json") + " could not be read.";
             return IsEnabled ? "Loaded when the game starts" : "Skipped when the game starts";
         }
     }
@@ -113,7 +113,7 @@ public sealed class ModItemViewModel : ObservableObject
         }
     }
 
-    public Brush StatusBrush => Theme.Brush(
+    public IBrush StatusBrush => Theme.Brush(
         !Mod.Kind.IsRunnable() ? Theme.Muted
         : !Mod.LocationWorks || HasError ? Theme.Danger
         : Mod.Enabled ? Theme.Success

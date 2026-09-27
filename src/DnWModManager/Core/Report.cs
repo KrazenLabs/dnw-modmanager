@@ -14,6 +14,7 @@ public static class Report
 
         var log = LogReader.ReadLatest(scan.Install);
 
+        WriteSystem(text, managerVersion);
         WriteInstall(text, scan, log);
         WriteLoader(text, scan);
         WriteMods(text, scan);
@@ -21,6 +22,50 @@ public static class Report
         WriteLog(text, scan, log);
 
         return text.ToString();
+    }
+
+    private static void WriteSystem(StringBuilder text, string managerVersion)
+    {
+        text.AppendLine("System");
+        text.AppendLine("  Manager: " + SystemDetails.Manager(managerVersion));
+        text.AppendLine("  OS:      " + SystemDetails.OperatingSystemName());
+        string wine = SystemDetails.Wine();
+        if (wine is not null) text.AppendLine("  Wine:    " + wine + "   <- Windows version running under Wine. Please use the native Linux version.");
+        string device = SystemDetails.Device();
+        if (device is not null) text.AppendLine("  Device:  " + device);
+        string session = SystemDetails.Session();
+        if (session is not null) text.AppendLine("  Session: " + session);
+
+        string steam = GameLocator.SteamPath();
+        if (steam is not null)
+        {
+            var details = new[] { SteamCompat.Kind(steam), SteamCompat.ClientVersion(steam) is { } build ? "client " + build : null }
+                .Where(detail => detail is not null).ToList();
+            text.AppendLine("  Steam:   " + SystemDetails.ShortenHome(steam) + (details.Count > 0 ? " (" + string.Join(", ", details) + ")" : ""));
+        }
+        text.AppendLine();
+    }
+
+    private static string RunsOn(GameInstall install)
+    {
+        if (Platform.IsWindows) return null;
+        var mapping = install.Source == InstallSource.Steam ? SteamCompat.ReadMapping(GameLocator.SteamPath()) : null;
+
+        if (install.Build == GameBuild.Linux)
+            return "native Linux" + (mapping?.ForGame is { } forced ? "; Steam is set to " + SteamCompat.Describe(forced) : "");
+
+        if (install.Source != InstallSource.Steam)
+            return "Cannot tell the compatibility layer outside Steam";
+
+        var prefix = SteamCompat.ReadPrefix(install);
+        string used = prefix is null
+            ? "Proton, not started yet"
+            : (prefix.Tool ?? "Proton") + (prefix.ToolVersion is null ? "" : " (" + prefix.ToolVersion + ")")
+              + (prefix.LastUsed is { } when ? ", last started " + when.ToString("yyyy-MM-dd HH:mm") : "");
+        string setting = mapping?.ForGame is { } chosen ? SteamCompat.Describe(chosen)
+            : mapping?.Default is { } fallback ? SteamCompat.Describe(fallback) + ", Steam Play default"
+            : null;
+        return used + (setting is null ? "" : "; Steam setting: " + setting);
     }
 
     private static void WriteInstall(StringBuilder text, ScanResult scan, LogReader.LogFile log)
@@ -31,6 +76,9 @@ public static class Report
         text.AppendLine("Game");
         text.AppendLine("  Folder:  " + scan.Install.GameDirectory);
         text.AppendLine("  Source:  " + scan.Install.Source.Label());
+        text.AppendLine("  Build:   " + scan.Install.BuildLabel);
+        string runsOn = RunsOn(scan.Install);
+        if (runsOn is not null) text.AppendLine("  Runs on: " + runsOn);
         text.AppendLine("  Version: " + (version, lastRun) switch
         {
             (null, null) => "unknown",
@@ -49,8 +97,16 @@ public static class Report
         var steam = GameLauncher.ReadSteamLaunchOptions();
         if (scan.Install.Source == InstallSource.Steam)
             text.AppendLine("  Steam launch options: " + (steam.Readable ? Quote(steam.Value) : "could not be read")
-                            + (steam.Readable && !steam.HasForceD3D11 ? "   <- no " + GameLauncher.ForceD3D11 : ""));
+                            + LaunchOptionNote(steam, scan.Install));
         text.AppendLine();
+    }
+
+    private static string LaunchOptionNote(SteamLaunchOptions steam, GameInstall install)
+    {
+        if (!steam.Readable) return "";
+        if (!GameLauncher.StartsLoader(steam, install)) return "   <- needs " + install.RequiredLaunchOption;
+        if (GameLauncher.UsesForceD3D11(install) && !install.RunsThroughProton && !steam.HasForceD3D11) return "   <- no " + GameLauncher.ForceD3D11;
+        return "";
     }
 
     private static void WriteLoader(StringBuilder text, ScanResult scan)
@@ -59,8 +115,9 @@ public static class Report
         text.AppendLine("Loader");
         text.AppendLine("  Installed: " + (loader.Installed ? "yes" : "no"));
         if (loader.Version is not null) text.AppendLine("  Version:   " + loader.Version);
-        text.AppendLine("  winhttp.dll:         " + YesNo(loader.DoorstopProxyPresent));
-        text.AppendLine("  doorstop_config.ini: " + YesNo(loader.DoorstopConfigPresent));
+        text.AppendLine(("  " + scan.Install.DoorstopProxyName + ":").PadRight(23) + YesNo(loader.DoorstopProxyPresent));
+        text.AppendLine(("  " + scan.Install.DoorstopConfigName + ":").PadRight(23) + YesNo(loader.DoorstopConfigPresent)
+                        + (loader.LauncherExecutable ? "" : "   <- not executable"));
 
         if (loader.Doorstop is not null)
         {
@@ -151,6 +208,10 @@ public static class Report
             return;
         }
 
+        string[] described = { "Game: ", "OS: ", "Environment: " };
+        foreach (var entry in log.Entries.Where(e => e.Source == "Loader" && described.Any(start => e.Message.StartsWith(start, StringComparison.Ordinal))).Take(3))
+            text.AppendLine("  " + (entry.Message.StartsWith("OS: ", StringComparison.Ordinal) ? "OS as the game saw it: " + entry.Message[4..] : entry.Message));
+
         var problems = log.Problems.ToList();
         if (problems.Count == 0)
         {
@@ -171,8 +232,8 @@ public static class Report
             return Path.GetFileName(path);
 
         string profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        return !string.IsNullOrEmpty(profile) && path.StartsWith(profile + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
-            ? "%USERPROFILE%" + path[profile.Length..]
+        return !string.IsNullOrEmpty(profile) && path.StartsWith(profile + Path.DirectorySeparatorChar, Platform.PathComparison)
+            ? (Platform.IsWindows ? "%USERPROFILE%" : "~") + path[profile.Length..]
             : path;
     }
 

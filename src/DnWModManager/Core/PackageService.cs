@@ -180,7 +180,7 @@ public sealed class PackageService : IDisposable
         string tag = (string)release["tag_name"];
         if (!ModVersion.TryParse(tag, out var version)) return null;
 
-        var asset = PickAsset(release["assets"] as JArray, source.Asset);
+        var asset = PickAsset(release["assets"] as JArray, source.AssetForPlatform);
 
         return new ReleaseInfo(
             Version: ModVersion.Display(version),
@@ -341,6 +341,10 @@ public sealed class PackageService : IDisposable
         if (name.Equals("dobby.dll", StringComparison.OrdinalIgnoreCase)) return true;
         if (name.Equals("doorstop_config.ini", StringComparison.OrdinalIgnoreCase)) return true;
         if (name.Equals(".doorstop_version", StringComparison.OrdinalIgnoreCase)) return true;
+        if (name.Equals("libdoorstop.so", StringComparison.OrdinalIgnoreCase)) return true;
+        if (name.Equals("libdoorstop.dylib", StringComparison.OrdinalIgnoreCase)) return true;
+        if (name.Equals("run_bepinex.sh", StringComparison.OrdinalIgnoreCase)) return true;
+        if (name.Equals("run_dnw.sh", StringComparison.OrdinalIgnoreCase)) return true;
         if (name.Equals("doorstop_libs", StringComparison.OrdinalIgnoreCase)) return true;
 
         string normalised = relativePath.Replace('\\', '/');

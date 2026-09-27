@@ -12,11 +12,30 @@ public sealed class ModSource
     public string Asset { get; init; }
     public string Url { get; init; }
     public string Version { get; init; }
+    public IReadOnlyDictionary<string, string> PlatformAssets { get; init; } = new Dictionary<string, string>();
     public bool CanUpdate => Type is "github" or "url";
+
+    public string AssetForPlatform
+        => PlatformAssets.TryGetValue(Platform.RuntimeId, out string asset) && !string.IsNullOrWhiteSpace(asset) ? asset : Asset;
+
+    public ModSource WithAsset(string asset) => new()
+    {
+        Type = Type,
+        Repo = Repo,
+        Asset = asset,
+        Url = Url,
+        Version = Version,
+        PlatformAssets = PlatformAssets,
+    };
 
     public static ModSource From(JObject token)
     {
         if (token is null) return new ModSource();
+        var platformAssets = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (token["assets"] is JObject assets)
+            foreach (var property in assets.Properties())
+                if (property.Value.Type == JTokenType.String) platformAssets[property.Name] = (string)property.Value;
+
         return new ModSource
         {
             Type = (string)token["type"] ?? "none",
@@ -24,6 +43,7 @@ public sealed class ModSource
             Asset = (string)token["asset"],
             Url = (string)token["url"],
             Version = (string)token["version"],
+            PlatformAssets = platformAssets,
         };
     }
 }
@@ -135,7 +155,7 @@ public sealed class ModCatalog
             UpdatedUtc = (DateTimeOffset?)root["updatedUtc"],
             Name = string.IsNullOrWhiteSpace(name) ? null : name.Trim(),
             LoaderSource = SourceIn(root, "loader") ?? DefaultLoaderSource(),
-            ManagerSource = SourceIn(root, "manager") ?? DefaultManagerSource(),
+            ManagerSource = ManagerUpdater.ForThisPlatform(SourceIn(root, "manager")) ?? DefaultManagerSource(),
             Mods = mods,
         };
     }
@@ -147,7 +167,7 @@ public sealed class ModCatalog
         => new() { Type = "github", Repo = "KrazenLabs/dnw-modloader" };
 
     private static ModSource DefaultManagerSource()
-        => new() { Type = "github", Repo = "KrazenLabs/dnw-modmanager", Asset = ManagerUpdater.ExecutableName };
+        => new() { Type = "github", Repo = "KrazenLabs/dnw-modmanager", Asset = ManagerUpdater.ReleaseAssetName };
 
     public static ModCatalog Merge(IReadOnlyList<CatalogSource> sources)
     {

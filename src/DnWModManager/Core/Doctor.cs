@@ -29,15 +29,19 @@ public static class Doctor
         {
             Code = "folder.permissions",
             Severity = Severity.Error,
-            Title = "The game folder is write-protected",
-            Detail = "Mods cannot load or save their settings.",
+            Title = "The game directory is write-protected",
+            Detail = Platform.IsWindows
+                ? "Could not save mod settings."
+                : "Could not save mod settings. Make sure you have write access to the game directory.",
             Path = scan.Install.GameDirectory,
-            Repair = new Repair
-            {
-                Label = "Fix permissions",
-                Description = "Makes sure mods can access the game folder.",
-                Apply = FixPermissionsAsync,
-            },
+            Repair = Platform.IsWindows
+                ? new Repair
+                {
+                    Label = "Fix permissions",
+                    Description = "Makes sure mods can access the game folder.",
+                    Apply = FixPermissionsAsync,
+                }
+                : null,
         });
     }
 
@@ -78,7 +82,7 @@ public static class Doctor
             {
                 Code = "loader.proxy.missing",
                 Severity = Severity.Error,
-                Title = "winhttp.dll is missing",
+                Title = install.DoorstopProxyName + " is missing",
                 Detail = "The Mod Loader installation is incomplete.",
                 Path = install.DoorstopProxyPath,
                 Repair = new Repair
@@ -127,12 +131,15 @@ public static class Doctor
             });
 
         CheckDoorstop(scan);
+        CheckLauncher(scan);
+        CheckSteamLaunchOptions(scan);
     }
 
     private static void CheckDoorstop(ScanResult scan)
     {
         var install = scan.Install;
         var doorstop = scan.Loader.Doorstop;
+        string configName = install.DoorstopConfigName;
 
         if (!scan.Loader.DoorstopConfigPresent || doorstop is null)
         {
@@ -140,19 +147,29 @@ public static class Doctor
             {
                 Code = "doorstop.config.missing",
                 Severity = Severity.Error,
-                Title = "doorstop_config.ini is missing",
-                Detail = "The DnW Mod Loader configuration file is missing.",
+                Title = configName + " is missing",
+                Detail = install.Build == GameBuild.Linux
+                    ? "The Linux startup script is missing."
+                    : "The DnW Mod Loader configuration file is missing.",
                 Path = install.DoorstopConfigPath,
-                Repair = new Repair
-                {
-                    Label = "Repair",
-                    Description = "Writes the correct Mod Loader configuration.",
-                    Apply = (context, _) =>
+                Repair = install.Build == GameBuild.Linux
+                    ? new Repair
                     {
-                        DoorstopConfig.WriteDefault(context.Install.DoorstopConfigPath);
-                        return Task.FromResult("Created " + context.Install.Relative(context.Install.DoorstopConfigPath) + ".");
+                        Label = "Reinstall the Mod Loader",
+                        Description = "Downloads and reinstalls the latest DnW Mod Loader release.",
+                        NeedsNetwork = true,
+                        Apply = InstallLatestLoaderAsync,
+                    }
+                    : new Repair
+                    {
+                        Label = "Repair",
+                        Description = "Rebuilds the Mod Loader configuration.",
+                        Apply = (context, _) =>
+                        {
+                            DoorstopConfig.WriteDefault(context.Install.DoorstopConfigPath);
+                            return Task.FromResult("Created " + context.Install.Relative(context.Install.DoorstopConfigPath) + ".");
+                        },
                     },
-                },
             });
             return;
         }
@@ -162,7 +179,7 @@ public static class Doctor
             {
                 Code = "doorstop.disabled",
                 Severity = Severity.Error,
-                Title = "Mod loading is disabled in doorstop_config.ini",
+                Title = "Mod loading is disabled in " + configName,
                 Detail = "The Mod Loader is currently disabled.",
                 Path = install.DoorstopConfigPath,
                 Repair = new Repair
@@ -179,14 +196,14 @@ public static class Doctor
             {
                 Code = "doorstop.foreign",
                 Severity = Severity.Error,
-                Title = "doorstop_config.ini starts " + foreign + " instead of DnW Mod Loader",
+                Title = configName + " starts " + foreign + " instead of DnW Mod Loader",
                 Detail = "The Mod Loader configuration was overwritten by a different loader.",
                 Path = install.DoorstopConfigPath,
                 Repair = new Repair
                 {
                     Label = "Repair",
                     Description = "Fixes the configuration to start the DnW Mod Loader.",
-                    Apply = (context, _) => Task.FromResult(RepairDoorstop(context, "doorstop_config.ini now starts DnW Mod Loader.")),
+                    Apply = (context, _) => Task.FromResult(RepairDoorstop(context, configName + " done.")),
                 },
             });
     }
@@ -194,10 +211,54 @@ public static class Doctor
     private static string RepairDoorstop(RepairContext context, string message)
     {
         var doorstop = DoorstopConfig.Load(context.Install.DoorstopConfigPath)
-                       ?? throw new IOException("doorstop_config.ini could not be read.");
+                       ?? throw new IOException(context.Install.DoorstopConfigName + " could not be read.");
         doorstop.RepairForLoader();
         doorstop.Save();
         return message;
+    }
+
+    private static void CheckLauncher(ScanResult scan)
+    {
+        if (!scan.Loader.DoorstopConfigPresent || scan.Loader.LauncherExecutable) return;
+
+        var install = scan.Install;
+        scan.Diagnostics.Add(new Diagnostic
+        {
+            Code = "launcher.notexecutable",
+            Severity = Severity.Error,
+            Title = install.DoorstopConfigName + " is not executable",
+            Detail = "The executable flag is missing.",
+            Path = install.DoorstopConfigPath,
+            Repair = new Repair
+            {
+                Label = "Make it executable",
+                Description = "Sets " + install.DoorstopConfigName + " executable flag.",
+                Apply = (context, _) =>
+                {
+                    Platform.MakeExecutable(context.Install.DoorstopConfigPath);
+                    return Task.FromResult(context.Install.DoorstopConfigName + " executable flag set.");
+                },
+            },
+        });
+    }
+
+    private static void CheckSteamLaunchOptions(ScanResult scan)
+    {
+        var install = scan.Install;
+        var options = scan.SteamOptions;
+        if (install.RequiredLaunchOption is null || options is not { Readable: true } || !scan.Loader.Installed) return;
+        if (GameLauncher.StartsLoader(options, install)) return;
+
+        scan.Diagnostics.Add(new Diagnostic
+        {
+            Code = "steam.launchoptions",
+            Severity = Severity.Warning,
+            Title = "Steam starts the game without the mod loader",
+            Detail = "Set the launch options in Steam (right-click Drag'n Wash, Properties, General, Launch Options) to: "
+                     + install.RequiredLaunchOption
+                     + (string.IsNullOrWhiteSpace(options.Value) ? "" : Environment.NewLine + "Current launch options: " + options.Value),
+            Path = install.GameDirectory,
+        });
     }
 
     private static async Task<string> InstallLatestLoaderAsync(RepairContext context, CancellationToken cancel)
@@ -207,7 +268,7 @@ public static class Doctor
 
         var source = new ModSource { Type = "github", Repo = "KrazenLabs/dnw-modloader" };
         var release = await packages.LatestReleaseAsync(source, cancel).ConfigureAwait(false)
-                      ?? throw new IOException("Could not reach GitHub to find the latest loader release.");
+                      ?? throw new IOException("Could not download the latest loader release information.");
 
         if (string.IsNullOrEmpty(release.DownloadUrl))
             throw new IOException("The latest loader release (" + release.Version + ") has no downloadable file.");
@@ -307,7 +368,7 @@ public static class Doctor
             if (doorstop is not null && doorstop.RepairForLoader())
             {
                 doorstop.Save();
-                moved.Add("doorstop_config.ini (repointed at the loader)");
+                moved.Add(install.DoorstopConfigName + " config fixed");
             }
         }
         else if (Directory.Exists(rival.Path))

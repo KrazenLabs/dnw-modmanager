@@ -36,7 +36,10 @@
     "source": {
       "type": "github",
       "repo": "KrazenLabs/dnw-modmanager",
-      "asset": "DnWModManager.exe"
+      "asset": "DnWModManager.exe",
+      "assets": {
+        "linux-x64": "DnWModManager-linux-x64.zip"
+      }
     }
   },
   "mods": [

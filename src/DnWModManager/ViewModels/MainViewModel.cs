@@ -1,12 +1,8 @@
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Windows;
-using System.Windows.Data;
 using System.Windows.Input;
-using System.Windows.Media;
+using Avalonia.Media;
+using Avalonia.Platform;
 using DnWModManager.Core;
-using DnWModManager.Views;
-using Microsoft.Win32;
 
 namespace DnWModManager.ViewModels;
 
@@ -31,15 +27,16 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public ManagerSettings Settings { get; }
 
-    public MainViewModel()
+    public IDialogs Dialogs { get; }
+
+    public MainViewModel(IDialogs dialogs)
     {
+        Dialogs = dialogs;
         Settings = ManagerSettings.Load();
         _newMods = new NewMods(Settings);
 
-        LogView = CollectionViewSource.GetDefaultView(LogEntries);
-        LogView.Filter = item => !_logProblemsOnly || item is LogEntry { Level: >= LogLevel.Warning };
-
         foreach (var url in Settings.ExtraCatalogs) ExtraCatalogs.Add(url);
+        if (ShowDesktopMenu) _menuEntry = DesktopMenu.Read();
 
         RefreshCommand = new AsyncRelayCommand(() => RefreshAsync(checkForUpdates: true, reloadCatalogs: true));
         FixEverythingCommand = new AsyncRelayCommand(FixEverythingAsync, () => RepairableCount > 0);
@@ -55,15 +52,18 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         InstallCatalogCommand = new AsyncRelayCommand(InstallFromCatalogAsync);
         UninstallCommand = new AsyncRelayCommand(UninstallAsync);
         ChangeGameFolderCommand = new AsyncRelayCommand(ChangeGameFolderAsync);
-        OpenCommand = new RelayCommand(OpenTarget);
-        OpenFolderCommand = new RelayCommand(OpenFolder);
-        CopyReportCommand = new RelayCommand(CopyReport);
+        OpenCommand = new AsyncRelayCommand(OpenTargetAsync);
+        OpenFolderCommand = new AsyncRelayCommand(OpenFolderAsync);
+        CopyReportCommand = new AsyncRelayCommand(CopyReportAsync);
+        CopyLaunchOptionCommand = new AsyncRelayCommand(CopyLaunchOptionAsync, () => RequiredLaunchOption is not null);
+        AddToMenuCommand = new AsyncRelayCommand(AddToMenuAsync);
+        RemoveFromMenuCommand = new AsyncRelayCommand(RemoveFromMenuAsync);
         GoToCommand = new RelayCommand(target => CurrentPage = Enum.Parse<Page>(target.ToString()!));
         AddCatalogCommand = new AsyncRelayCommand(AddCatalogAsync);
         RemoveCatalogCommand = new AsyncRelayCommand(RemoveCatalogAsync);
         AddResourceFilesCommand = new AsyncRelayCommand(AddResourceFilesAsync, _ => NotBusy);
         AddResourceFolderCommand = new AsyncRelayCommand(AddResourceFolderAsync, _ => NotBusy);
-        OpenResourceFolderCommand = new RelayCommand(OpenResourceFolder);
+        OpenResourceFolderCommand = new AsyncRelayCommand(OpenResourceFolderAsync);
     }
 
     public GameInstall Install { get; private set; }
@@ -94,6 +94,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
             if (previous == Page.Browse) _newMods.PageClosed();
             if (value == Page.Browse) RebuildCatalogList();
+            if (value == Page.Settings && ShowDesktopMenu) MenuEntry = DesktopMenu.Read();
         }
     }
 
@@ -107,7 +108,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public bool Busy
     {
         get => _busy;
-        private set { Set(ref _busy, value); Raise(nameof(NotBusy)); }
+        private set { Set(ref _busy, value); Raise(nameof(NotBusy)); CommandManager.InvalidateRequerySuggested(); }
     }
 
     public bool NotBusy => !_busy;
@@ -163,7 +164,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public string IssueBadge => HasIssues ? IssueCount.ToString() : null;
 
     // Warning/Error colors
-    public Brush IssueBadgeBrush => Theme.Brush(ErrorCount > 0 ? Theme.Danger : Theme.Warning);
+    public IBrush IssueBadgeBrush => Theme.Brush(ErrorCount > 0 ? Theme.Danger : Theme.Warning);
 
     public string HealthSummary
     {
@@ -181,7 +182,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     }
 
     public string HealthHint => RepairableCount > 0
-        ? "See each one under Issues, or fix them all at once."
+        ? "See each one under Issues."
         : "See what they are under Issues.";
 
     public bool ShowHealthCard => HasIssues || (_startupFinished && Install is null);
@@ -194,10 +195,78 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private SteamLaunchOptions _steamOptions;
 
     public bool ShowSteamD3D11Hint => Install?.Source == InstallSource.Steam
+                                      && GameLauncher.UsesForceD3D11(Install)
+                                      && !Install.RunsThroughProton
                                       && Settings.LaunchMode == LaunchMode.Steam
                                       && _steamOptions is { Readable: true, HasForceD3D11: false };
 
     public bool IsElevated => Elevation.IsElevated;
+
+    public bool CanLaunchDirectly => Install is null || GameLauncher.CanLaunchDirectly(Install);
+
+    public string DirectLaunchDescription => Install?.Build == GameBuild.Linux
+        ? "Starts the Linux version through " + GameInstall.LinuxLauncherName
+        : Install?.RunsThroughProton == true
+            ? "Please start the Proton version through Steam."
+            : "Always adds " + GameLauncher.ForceD3D11 + " to avoid a known Direct3D 12 crash.";
+
+    public string SteamLaunchDescription => GameLauncher.UsesForceD3D11(Install) && !(Install?.RunsThroughProton ?? false)
+        ? "Uses Steam launch options. Please set " + GameLauncher.ForceD3D11 + " there yourself."
+        : "Uses Steam launch options.";
+
+    public string PlayTooltip => Install is null ? null
+        : GameLauncher.EffectiveMode(Install, Settings.LaunchMode) == LaunchMode.Steam ? "Starts the game through Steam"
+        : GameLauncher.UsesForceD3D11(Install) ? "Starts the game with " + GameLauncher.ForceD3D11 + ", to avoid a known Direct3D 12 crash"
+        : "Starts the game with the mod loader";
+
+    public string RequiredLaunchOption => Install?.RequiredLaunchOption;
+
+    public bool ShowLaunchOption => RequiredLaunchOption is not null;
+
+    public string LaunchOptionText => Install?.Build == GameBuild.Linux
+        ? "Steam starts the Linux version with the mod loader only with this launch option (right-click the game in Steam, Properties, General, Launch Options):"
+        : "Steam starts the Windows version through Proton with the mod loader only with this launch option (right-click the game in Steam, Properties, General, Launch Options):";
+
+    public string LaunchOptionStatus => _steamOptions is not { Readable: true } || Install?.Source != InstallSource.Steam
+        ? null
+        : GameLauncher.StartsLoader(_steamOptions, Install) ? "Set." : "Not set.";
+
+    public IBrush LaunchOptionStatusBrush => Theme.Brush(GameLauncher.StartsLoader(_steamOptions, Install) ? Theme.Success : Theme.Warning);
+
+    public bool ShowDesktopMenu { get; } = DesktopMenu.IsAvailable;
+
+    private MenuEntry _menuEntry;
+    public MenuEntry MenuEntry
+    {
+        get => _menuEntry;
+        private set
+        {
+            _menuEntry = value;
+            foreach (var name in new[] { nameof(MenuEntry), nameof(IsInMenu), nameof(CanAddToMenu), nameof(AddToMenuLabel), nameof(DesktopMenuText) })
+                Raise(name);
+        }
+    }
+
+    public bool IsInMenu => _menuEntry is { State: not MenuEntryState.Missing };
+
+    public bool CanAddToMenu => _menuEntry is { State: not MenuEntryState.Current };
+
+    public string AddToMenuLabel => _menuEntry?.State == MenuEntryState.Other ? "Update menu entry" : "Add to menu";
+
+    public string DesktopMenuText => _menuEntry switch
+    {
+        { State: MenuEntryState.Current } =>
+            "You can also access the DnW Mod Manager in your application menu. On Steam Deck, it is listed under Games in Desktop Mode.",
+        { State: MenuEntryState.Other, TargetExists: true } =>
+            "Your application menu starts a different copy of the DnW Mod Manager, in " + Path.GetDirectoryName(_menuEntry.Target)
+            + ". This is probably unintended.",
+        { State: MenuEntryState.Other } =>
+            "Your application menu has an entry for a copy of the DnW Mod Manager that no longer exists"
+            + (string.IsNullOrEmpty(_menuEntry.Target) ? "" : " (" + _menuEntry.Target + ")") + ". Update the entry to start this one.",
+        _ => "Add the DnW Mod Manager to your application menu. On Steam Deck, it is listed under Games in Desktop Mode.",
+    };
+
+    public string QuarantineHint => "Removed files will be quarantined to " + Path.Combine("Mods", "_quarantine");
 
     public ICommand RefreshCommand { get; }
     public ICommand FixEverythingCommand { get; }
@@ -216,6 +285,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public ICommand OpenCommand { get; }
     public ICommand OpenFolderCommand { get; }
     public ICommand CopyReportCommand { get; }
+    public ICommand CopyLaunchOptionCommand { get; }
+    public ICommand AddToMenuCommand { get; }
+    public ICommand RemoveFromMenuCommand { get; }
     public ICommand GoToCommand { get; }
     public ICommand AddCatalogCommand { get; }
     public ICommand RemoveCatalogCommand { get; }
@@ -262,6 +334,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         var install = Install;
         _gameFolderAccess = await Task.Run(() => FolderPermissions.Check(install));
 
+        if (!Platform.IsWindows) return null;
+
         bool hasModFiles = install.LoaderInstalled || Directory.Exists(install.ModsDirectory) || Directory.Exists(install.BepInExDirectory);
         bool declined = string.Equals(Settings.PermissionFixDeclinedFor, install.GameDirectory, StringComparison.OrdinalIgnoreCase);
         if (_gameFolderAccess != FolderAccess.Denied || !hasModFiles || declined) return null;
@@ -272,6 +346,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private async Task<string> EnsureWritableAsync()
     {
         if (_gameFolderAccess != FolderAccess.Denied) return null;
+        if (!Platform.IsWindows) return "The game folder is write-protected.";
 
         string status = await FixGameFolderAsync();
         return status == PermissionsFixedStatus ? null : status;
@@ -295,8 +370,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception e)
         {
-            MessageBox.Show("Failed to change game folder permissions:" + Environment.NewLine + Environment.NewLine + e.Message,
-                "DnW Mod Manager", MessageBoxButton.OK, MessageBoxImage.Warning);
+            await Ask("Failed to change game folder permissions:" + Environment.NewLine + Environment.NewLine + e.Message,
+                "DnW Mod Manager", MessageButtons.Ok, MessageIcon.Warning);
             return "Failed to fix game folder permissions.";
         }
         finally
@@ -351,7 +426,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception e)
         {
-            ReportError("Could not read game folder", e);
+            await ReportErrorAsync("Could not read game folder", e);
         }
         finally
         {
@@ -389,6 +464,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                      nameof(HasIssues), nameof(IssueBadge), nameof(IssueBadgeBrush),
                      nameof(HealthSummary), nameof(HealthHint), nameof(ShowHealthCard),
                      nameof(UpdateCount), nameof(HasUpdates), nameof(CanEditLoaderConfig), nameof(ShowSteamD3D11Hint),
+                     nameof(CanLaunchDirectly), nameof(DirectLaunchDescription), nameof(SteamLaunchDescription), nameof(PlayTooltip),
+                     nameof(RequiredLaunchOption), nameof(ShowLaunchOption), nameof(LaunchOptionText), nameof(LaunchOptionStatus),
+                     nameof(LaunchOptionStatusBrush),
                  })
             Raise(name);
         CommandManager.InvalidateRequerySuggested();
@@ -450,9 +528,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             var lines = new List<string>();
             foreach (var source in Catalog.Sources.Where(s => s.Error is not null))
             {
-                string name = source.IsOfficial ? "The official repository" : source.Label;
+                string name = source.IsOfficial ? "The official KrazenLabs repository" : source.Label;
                 lines.Add(source.CachedAt is not null
-                    ? name + " could not be updated because " + source.Error + "."
+                    ? name + " could not be updated: " + source.Error + "."
                     : name + " could not be loaded: " + source.Error + ".");
             }
             return lines.Count == 0 ? null : string.Join(Environment.NewLine, lines);
@@ -486,7 +564,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             : null;
         if (CatalogInputError is not null) return;
 
-        if (!ConfirmTrusted("Add mod repository", "Only add mod repositories from authors you trust!", url, "Add repository"))
+        if (!await ConfirmTrustedAsync("Add mod repository", "Only add mod repositories from authors you trust!", url, "Add repository"))
             return;
 
         Settings.ExtraCatalogs.Add(url);
@@ -517,7 +595,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         await RefreshAsync(checkForUpdates: false, reloadCatalogs: true, completed: "Removed " + row.Label + ".");
     }
 
-    public ICollectionView LogView { get; }
+    public IReadOnlyList<LogEntry> LogView { get; private set; } = Array.Empty<LogEntry>();
 
     private bool _logProblemsOnly = true;
 
@@ -527,16 +605,22 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         set
         {
             if (!Set(ref _logProblemsOnly, value)) return;
-            LogView.Refresh();
-            Raise(nameof(LogEmptyText));
+            RefreshLogView();
         }
+    }
+
+    private void RefreshLogView()
+    {
+        LogView = LogEntries.Where(entry => !_logProblemsOnly || entry.Level >= LogLevel.Warning).ToList();
+        Raise(nameof(LogView));
+        Raise(nameof(LogEmptyText));
     }
 
     public string LogEmptyText
     {
         get
         {
-            if (!LogView.IsEmpty) return null;
+            if (LogView.Count > 0) return null;
             if (!HasLog) return "No logs present.";
             return _logProblemsOnly ? "No errors or warnings in the last run." : "The log is empty.";
         }
@@ -563,7 +647,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         Raise(nameof(LogSummary));
         Raise(nameof(LogPath));
         Raise(nameof(HasLog));
-        Raise(nameof(LogEmptyText));
+        RefreshLogView();
     }
 
     public string LogSummary { get; private set; }
@@ -590,16 +674,16 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         if (destructive.Count > 0)
         {
-            var answer = MessageBox.Show(
+            var answer = await Ask(
                 "Repairing " + repairable.Count + (repairable.Count == 1 ? " issue. " : " issues. ")
                 + destructive.Count + " changes are not revertible:" + Environment.NewLine + Environment.NewLine
                 + string.Join(Environment.NewLine, destructive.Select(d => "  • " + d.Repair.Label + " - " + d.Title))
                 + Environment.NewLine + Environment.NewLine
                 + "Include the changes listed above?",
-                "Repair everything", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+                "Repair everything", MessageButtons.YesNoCancel, MessageIcon.Question);
 
-            if (answer == MessageBoxResult.Cancel) return;
-            includeDestructive = answer == MessageBoxResult.Yes;
+            if (answer is MessageResult.Cancel or MessageResult.None) return;
+            includeDestructive = answer == MessageResult.Yes;
         }
 
         await RunRepairsAsync(repairable, includeDestructive);
@@ -611,11 +695,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         if (row.Diagnostic.Repair.IsDestructive)
         {
-            var answer = MessageBox.Show(
+            var answer = await Ask(
                 row.RepairDescription + Environment.NewLine + Environment.NewLine
-                + "Incorrect files will be moved to Mods\\_quarantine.",
-                row.RepairLabel, MessageBoxButton.OKCancel, MessageBoxImage.Question);
-            if (answer != MessageBoxResult.OK) return;
+                + "Incorrect files will be moved to " + Path.Combine("Mods", "_quarantine") + ".",
+                row.RepairLabel, MessageButtons.OkCancel, MessageIcon.Question);
+            if (answer != MessageResult.Ok) return;
         }
 
         await RunRepairsAsync(new[] { row.Diagnostic }, includeDestructive: true);
@@ -641,11 +725,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
             if (failed > 0)
             {
-                MessageBox.Show(
+                await Ask(
                     fixedCount + " repaired, " + failed + " failed:" + Environment.NewLine + Environment.NewLine
                     + string.Join(Environment.NewLine + Environment.NewLine,
                         outcomes.Where(o => !o.Succeeded).Select(o => o.Diagnostic.Title + Environment.NewLine + o.Message)),
-                    "Some repairs failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    "Some repairs failed", MessageButtons.Ok, MessageIcon.Warning);
             }
 
             completed = fixedCount + (fixedCount == 1 ? " issue repaired" : " issues repaired");
@@ -656,7 +740,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception e)
         {
-            ReportError("An error occurred while attempting repairs ", e);
+            await ReportErrorAsync("An error occurred while attempting repairs ", e);
         }
         finally
         {
@@ -664,8 +748,6 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             await RefreshAsync(checkForUpdates: false, completed: completed);
         }
     }
-
-    // -- updates ------------------------------------------------------------------------------------------
 
     public async Task CheckUpdatesAsync()
     {
@@ -699,12 +781,14 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                     : null;
                 row.RefreshAll();
             }
-
-            RaiseHeadline();
         }
         catch (Exception e)
         {
             Status = "Could not check for updates: " + e.Message;
+        }
+        finally
+        {
+            RaiseHeadline();
         }
     }
 
@@ -720,8 +804,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         var release = await _packages.LatestReleaseAsync(Catalog.LoaderSource, CancellationToken.None);
         if (release is null)
         {
-            MessageBox.Show("Unable to check for mod loader update. Check your network.",
-                "DnW Mod Manager", MessageBoxButton.OK, MessageBoxImage.Warning);
+            await Ask("Unable to check for mod loader update. Check your connection.",
+                "DnW Mod Manager", MessageButtons.Ok, MessageIcon.Warning);
             Status = "";
             return;
         }
@@ -736,12 +820,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         {
             if (string.IsNullOrEmpty(release.DownloadUrl))
             {
-                MessageBox.Show("Could not find the downloadable package for release " + release.Version + ". Check the release page instead.",
-                    "DnW Mod Manager", MessageBoxButton.OK, MessageBoxImage.Warning);
+                await Ask("Could not find the downloadable package for release " + release.Version + ". Check the release page.",
+                    "DnW Mod Manager", MessageButtons.Ok, MessageIcon.Warning);
                 return;
             }
 
-            if (GameLauncher.IsRunning() && !ConfirmGameRunning()) return;
+            if (GameLauncher.IsRunning() && !await ConfirmGameRunningAsync()) return;
 
             completed = await EnsureWritableAsync();
             if (completed is not null) return;
@@ -763,7 +847,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception e)
         {
-            ReportError("An error occured while installing the loader", e);
+            await ReportErrorAsync("An error occured while installing the loader", e);
         }
         finally
         {
@@ -824,11 +908,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         if (string.IsNullOrEmpty(release.DownloadUrl))
         {
-            OfferReleasePage("Release " + release.Version + " of the mod manager has no downloadable file.", release);
+            await OfferReleasePageAsync("Release " + release.Version + " has no downloadable file.", release);
             return;
         }
 
-        if (!ConfirmManagerUpdate(release)) return;
+        if (!await ConfirmManagerUpdateAsync(release)) return;
 
         Busy = true;
         string download = null;
@@ -843,12 +927,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             await Task.Run(() => ManagerUpdater.Apply(ManagerUpdater.Prepare(download, App.Version), App.Version));
 
             Status = "Reopening as version " + release.Version + "...";
-            Application.Current.Shutdown();
+            Dialogs.Shutdown();
         }
         catch (Exception e)
         {
-            Status = "The Mod Manager was not updated.";
-            OfferReleasePage("The Mod Manager could not update itself: " + ExplainUpdateFailure(e), release);
+            Status = "Failed to update the Mod Manager.";
+            await OfferReleasePageAsync("Failed to update the Mod Manager: " + ExplainUpdateFailure(e), release);
         }
         finally
         {
@@ -857,24 +941,26 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    private static bool ConfirmManagerUpdate(ReleaseInfo release)
-        => MessageBox.Show(
+    private async Task<bool> ConfirmManagerUpdateAsync(ReleaseInfo release)
+        => await Ask(
             "Update the DnW Mod Manager from " + App.Version + " to " + release.Version + "?"
             + Environment.NewLine + Environment.NewLine
             + "The Mod Manager will automatically restart during the update.",
-            "Update Mod Manager", MessageBoxButton.OKCancel, MessageBoxImage.Question) == MessageBoxResult.OK;
+            "Update Mod Manager", MessageButtons.OkCancel, MessageIcon.Question) == MessageResult.Ok;
 
     private static string ExplainUpdateFailure(Exception e) => e is UnauthorizedAccessException
-        ? e.Message + " Could not update Mod Manager due to missing permissions. Please change the save location or run the Mod Manager as an administrator."
+        ? e.Message + (Platform.IsWindows
+            ? " Could not update Mod Manager due to missing permissions. Please change the save location or run the Mod Manager as an administrator."
+            : " Could not update Mod Manager due to missing permissions.")
         : e.Message;
 
-    private static void OfferReleasePage(string problem, ReleaseInfo release)
+    private async Task OfferReleasePageAsync(string problem, ReleaseInfo release)
     {
-        var answer = MessageBox.Show(
+        var answer = await Ask(
             problem + Environment.NewLine + Environment.NewLine
             + "Open the release page to download version " + release.Version + " manually?",
-            "Mod Manager update", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-        if (answer != MessageBoxResult.Yes || string.IsNullOrWhiteSpace(release.PageUrl)) return;
+            "Mod Manager update", MessageButtons.YesNo, MessageIcon.Warning);
+        if (answer != MessageResult.Yes || string.IsNullOrWhiteSpace(release.PageUrl)) return;
 
         try { Shell.OpenUrl(release.PageUrl); }
         catch { }
@@ -909,8 +995,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         var release = await _packages.LatestReleaseAsync(row.Mod.Source, CancellationToken.None);
         if (release is null)
         {
-            MessageBox.Show("No downloadable release was found for " + row.Name + ".",
-                "DnW Mod Manager", MessageBoxButton.OK, MessageBoxImage.Warning);
+            await Ask("No downloadable release was found for " + row.Name + ".",
+                "DnW Mod Manager", MessageButtons.Ok, MessageIcon.Warning);
             Status = "";
             return;
         }
@@ -922,9 +1008,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         if (string.IsNullOrEmpty(release.DownloadUrl))
         {
-            MessageBox.Show("No downloadable release was found. Please install manually "
-                            + "with \"Install from zip\".",
-                "DnW Mod Manager", MessageBoxButton.OK, MessageBoxImage.Warning);
+            await Ask("No downloadable release was found. Please install manually "
+                      + "with \"Install from zip\".",
+                "DnW Mod Manager", MessageButtons.Ok, MessageIcon.Warning);
             return;
         }
 
@@ -932,7 +1018,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         string completed = null;
         try
         {
-            if (GameLauncher.IsRunning() && !ConfirmGameRunning()) return;
+            if (GameLauncher.IsRunning() && !await ConfirmGameRunningAsync()) return;
 
             completed = await EnsureWritableAsync();
             if (completed is not null) return;
@@ -945,7 +1031,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception e)
         {
-            ReportError(what + " failed", e);
+            await ReportErrorAsync(what + " failed", e);
         }
         finally
         {
@@ -956,35 +1042,34 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private async Task InstallFromFileAsync()
     {
-        var dialog = new OpenFileDialog
+        var picked = await Dialogs.PickFilesAsync("Choose a mod zip", allowMultiple: false, new[]
         {
-            Title = "Choose a mod zip",
-            Filter = "Mod packages (*.zip)|*.zip|All files (*.*)|*.*",
-            CheckFileExists = true,
-        };
-        if (dialog.ShowDialog() != true) return;
+            new FileFilter("Mod packages (*.zip)", new[] { "*.zip", "*.ZIP" }),
+            new FileFilter("All files", new[] { "*" }),
+        });
+        if (picked.Count == 0) return;
 
-        await InstallLocalAsync(dialog.FileName);
+        await InstallLocalAsync(picked[0]);
     }
 
     private async Task InstallFromFolderAsync()
     {
-        var dialog = new OpenFolderDialog { Title = "Choose the folder that contains the mod" };
-        if (dialog.ShowDialog() != true) return;
+        var picked = await Dialogs.PickFoldersAsync("Choose the folder that contains the mod", allowMultiple: false);
+        if (picked.Count == 0) return;
 
-        await InstallLocalAsync(dialog.FolderName);
+        await InstallLocalAsync(picked[0]);
     }
 
     private async Task InstallLocalAsync(string path)
     {
-        if (!ConfirmTrusted("Install mod", "Only install mods from authors you trust!", Path.GetFileName(path), "Install"))
+        if (!await ConfirmTrustedAsync("Install mod", "Only install mods from authors you trust!", Path.GetFileName(path), "Install"))
             return;
 
         Busy = true;
         string completed = null;
         try
         {
-            if (GameLauncher.IsRunning() && !ConfirmGameRunning()) return;
+            if (GameLauncher.IsRunning() && !await ConfirmGameRunningAsync()) return;
 
             completed = await EnsureWritableAsync();
             if (completed is not null) return;
@@ -994,7 +1079,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception e)
         {
-            ReportError("An error occurred while installing the package", e);
+            await ReportErrorAsync("An error occurred while installing the package", e);
         }
         finally
         {
@@ -1028,7 +1113,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         string names = string.Join(", ", report.Installed.Select(i => i.Split(" -> ")[0]));
         var unsupported = report.Unsupported.ToList();
         if (unsupported.Count > 0)
-            return "Installed " + names + " without " + UnsupportedParts(unsupported) + ", which the loader cannot run.";
+            return "Installed " + names + " without " + UnsupportedParts(unsupported);
 
         int files = report.Written + report.Unchanged;
         return "Installed " + names + (files > 1 ? " (" + files + " files)." : ".");
@@ -1046,20 +1131,20 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         if (parameter is not ModItemViewModel row) return;
 
         var alongside = Installer.InstalledAlongside(row.Mod, Install);
-        var answer = MessageBox.Show(
+        var answer = await Ask(
             "Uninstall " + row.Name + "?" + Environment.NewLine + Environment.NewLine
             + (alongside.Count > 0
                 ? "It was installed together with " + string.Join(", ", alongside) + ", which will be uninstalled as well."
                   + Environment.NewLine + Environment.NewLine
                 : ""),
-            "Uninstall mod", MessageBoxButton.OKCancel, MessageBoxImage.Question);
-        if (answer != MessageBoxResult.OK) return;
+            "Uninstall mod", MessageButtons.OkCancel, MessageIcon.Question);
+        if (answer != MessageResult.Ok) return;
 
         Busy = true;
         string completed = null;
         try
         {
-            if (GameLauncher.IsRunning() && !ConfirmGameRunning()) return;
+            if (GameLauncher.IsRunning() && !await ConfirmGameRunningAsync()) return;
 
             completed = await EnsureWritableAsync();
             if (completed is not null) return;
@@ -1070,7 +1155,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception e)
         {
-            ReportError(row.Name + " could not be uninstalled", e);
+            await ReportErrorAsync(row.Name + " could not be uninstalled", e);
         }
         finally
         {
@@ -1085,21 +1170,21 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         if (GameLauncher.IsRunning())
         {
-            MessageBox.Show("Drag'n Wash is already running.", "DnW Mod Manager",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            await Ask("Drag'n Wash is already running.", "DnW Mod Manager",
+                MessageButtons.Ok, MessageIcon.Information);
             return;
         }
 
         if (HasIssues)
         {
             string found = IssueCount == 1 ? "an issue that needs" : IssueCount + " issues that need";
-            var answer = MessageBox.Show(
+            var answer = await Ask(
                 "The mod manager found " + found + " to be repaired. Some mods may not load or may not work correctly."
                 + Environment.NewLine + Environment.NewLine
                 + "Launch the game anyway?",
-                "Issues found", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+                "Issues found", MessageButtons.YesNo, MessageIcon.Warning, MessageResult.No);
 
-            if (answer != MessageBoxResult.Yes)
+            if (answer != MessageResult.Yes)
             {
                 CurrentPage = Page.Issues;
                 return;
@@ -1111,48 +1196,49 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             GameLauncher.Launch(Install, Settings.LaunchMode, Settings.ExtraLaunchArguments);
             Status = GameLauncher.EffectiveMode(Install, Settings.LaunchMode) == LaunchMode.Steam
                 ? "Starting game through Steam."
-                : "Started the game with " + GameLauncher.ForceD3D11 + " enabled.";
+                : GameLauncher.UsesForceD3D11(Install)
+                    ? "Started the game with " + GameLauncher.ForceD3D11 + " enabled."
+                    : Platform.IsExecutable(Install.DoorstopConfigPath)
+                        ? "Started the game with the mod loader."
+                        : "Started the game without the mod loader: " + Install.DoorstopConfigName + " is missing or not executable.";
 
             if (Settings.CloseOnLaunch)
             {
                 await Task.Delay(1200);
-                Application.Current.Shutdown();
+                Dialogs.Shutdown();
             }
         }
         catch (Exception e)
         {
-            ReportError("An error occurred while trying to launch the game.", e);
+            await ReportErrorAsync("An error occurred while trying to launch the game.", e);
         }
     }
 
     private async Task ChangeGameFolderAsync()
     {
-        var dialog = new OpenFolderDialog
-        {
-            Title = "Choose the folder that contains DragNWash.exe",
-            InitialDirectory = Install?.GameDirectory ?? "",
-        };
-        if (dialog.ShowDialog() != true) return;
+        var picked = await Dialogs.PickFoldersAsync("Choose the Drag'n Wash game folder", allowMultiple: false, Install?.GameDirectory);
+        if (picked.Count == 0) return;
+        string folder = picked[0];
 
-        if (!GameInstall.LooksLikeGameDirectory(dialog.FolderName))
+        if (!GameInstall.LooksLikeGameDirectory(folder))
         {
-            MessageBox.Show("DragNWash.exe was not found." + Environment.NewLine + Environment.NewLine
-                            + "Choose the folder that contains DragNWash.exe. On Steam, right-click the game, "
-                            + "Manage, Browse local files.",
-                "Not the game folder", MessageBoxButton.OK, MessageBoxImage.Warning);
+            await Ask("Drag'n Wash was not found in this folder." + Environment.NewLine + Environment.NewLine
+                      + "Choose the folder that contains " + GameInstall.WindowsExeName + " (Windows version) or "
+                      + GameInstall.LinuxExeName + " (Linux version). On Steam, right-click the game, Manage, Browse local files.",
+                "Not the game folder", MessageButtons.Ok, MessageIcon.Warning);
             return;
         }
 
-        SetInstall(GameInstall.At(dialog.FolderName));
+        SetInstall(GameInstall.At(folder));
         string completed = await FixExistingInstallAsync();
         await RefreshAsync(checkForUpdates: true, reloadCatalogs: true, completed: completed);
     }
 
-    private void OpenFolder(object parameter)
+    private async Task OpenFolderAsync(object parameter)
     {
         if (Install is null)
         {
-            MessageBox.Show("Choose the game folder first.", "DnW Mod Manager", MessageBoxButton.OK, MessageBoxImage.Information);
+            await Ask("Choose the game folder first.", "DnW Mod Manager", MessageButtons.Ok, MessageIcon.Information);
             return;
         }
 
@@ -1167,7 +1253,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         if (!Directory.Exists(path))
         {
-            MessageBox.Show(missing, "DnW Mod Manager", MessageBoxButton.OK, MessageBoxImage.Information);
+            await Ask(missing, "DnW Mod Manager", MessageButtons.Ok, MessageIcon.Information);
             return;
         }
 
@@ -1177,32 +1263,29 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception e)
         {
-            ReportError("Could not open " + path, e);
+            await ReportErrorAsync("Could not open " + path, e);
         }
     }
 
     private async Task AddResourceFilesAsync(object parameter)
     {
         if (parameter is not ResourceFolderViewModel target) return;
-        var dialog = new OpenFileDialog
+        var picked = await Dialogs.PickFilesAsync("Add files to " + target.Name, allowMultiple: true, new[]
         {
-            Title = "Add files to " + target.Name,
-            Filter = target.Folder.DialogFilter,
-            Multiselect = true,
-            CheckFileExists = true,
-        };
-        if (dialog.ShowDialog() != true) return;
+            new FileFilter(target.Folder.PickerName, target.Folder.PickerPatterns),
+        });
+        if (picked.Count == 0) return;
 
-        await ImportResourcesAsync(target, dialog.FileNames);
+        await ImportResourcesAsync(target, picked.ToList());
     }
 
     private async Task AddResourceFolderAsync(object parameter)
     {
         if (parameter is not ResourceFolderViewModel target) return;
-        var dialog = new OpenFolderDialog { Title = "Add folders to " + target.Name, Multiselect = true };
-        if (dialog.ShowDialog() != true) return;
+        var picked = await Dialogs.PickFoldersAsync("Add folders to " + target.Name, allowMultiple: true);
+        if (picked.Count == 0) return;
 
-        await ImportResourcesAsync(target, dialog.FolderNames);
+        await ImportResourcesAsync(target, picked.ToList());
     }
 
     public async Task ImportResourcesAsync(ResourceFolderViewModel target, IReadOnlyCollection<string> paths)
@@ -1230,7 +1313,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception e)
         {
-            ReportError("Could not import files to " + target.Name, e);
+            await ReportErrorAsync("Could not import files to " + target.Name, e);
         }
         finally
         {
@@ -1238,14 +1321,14 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    private void OpenResourceFolder(object parameter)
+    private async Task OpenResourceFolderAsync(object parameter)
     {
         if (parameter is not ResourceFolderViewModel target) return;
         string path = target.Folder.FullPath;
         if (!target.Folder.EnsureExists(out string error))
         {
-            MessageBox.Show("Could not open " + path + ":" + Environment.NewLine + Environment.NewLine + error,
-                "DnW Mod Manager", MessageBoxButton.OK, MessageBoxImage.Warning);
+            await Ask("Could not open " + path + ":" + Environment.NewLine + Environment.NewLine + error,
+                "DnW Mod Manager", MessageButtons.Ok, MessageIcon.Warning);
             return;
         }
 
@@ -1255,11 +1338,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception e)
         {
-            ReportError("Could not open " + path, e);
+            await ReportErrorAsync("Could not open " + path, e);
         }
     }
 
-    private void OpenTarget(object parameter)
+    private async Task OpenTargetAsync(object parameter)
     {
         string target = parameter as string;
         if (string.IsNullOrWhiteSpace(target)) return;
@@ -1269,53 +1352,111 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             if (Shell.IsWebAddress(target)) Shell.OpenUrl(target);
             else if (File.Exists(target)) Shell.RevealFile(target);
             else if (Directory.Exists(target)) Shell.OpenFolder(target);
-            else MessageBox.Show(target + " no longer exists. Refresh to see the current state of the game folder.",
-                "DnW Mod Manager", MessageBoxButton.OK, MessageBoxImage.Information);
+            else await Ask(target + " no longer exists. Refresh to see the current state of the game folder.",
+                "DnW Mod Manager", MessageButtons.Ok, MessageIcon.Information);
         }
         catch (Exception e)
         {
-            ReportError("Could not open " + target, e);
+            await ReportErrorAsync("Could not open " + target, e);
         }
     }
 
-    private void CopyReport()
+    private async Task CopyReportAsync()
     {
         if (Scan is null) return;
         try
         {
-            Clipboard.SetText(Report.Write(Scan, App.Version));
+            await Dialogs.SetClipboardTextAsync(Report.Write(Scan, App.Version));
             Status = "The report was copied to the clipboard.";
         }
         catch (Exception e)
         {
-            ReportError("Could not copy the report", e);
+            await ReportErrorAsync("Could not copy the report", e);
         }
     }
 
-    private static bool ConfirmGameRunning()
-        => MessageBox.Show(
+    private async Task CopyLaunchOptionAsync()
+    {
+        if (RequiredLaunchOption is null) return;
+        try
+        {
+            await Dialogs.SetClipboardTextAsync(RequiredLaunchOption);
+            Status = "The launch option was copied to the clipboard.";
+        }
+        catch (Exception e)
+        {
+            await ReportErrorAsync("Could not copy the launch option", e);
+        }
+    }
+
+    private async Task AddToMenuAsync()
+    {
+        bool update = _menuEntry?.State == MenuEntryState.Other;
+        try
+        {
+            using (var icon = AssetLoader.Open(new Uri("avares://DnWModManager/Assets/logo.png")))
+                DesktopMenu.Add(icon);
+            Status = update
+                ? "The menu entry has been updated."
+                : "The DnW Mod Manager was added to your application menu.";
+        }
+        catch (Exception e)
+        {
+            await ReportErrorAsync("Could not add the DnW Mod Manager to the application menu", e);
+        }
+        finally
+        {
+            MenuEntry = DesktopMenu.Read();
+        }
+    }
+
+    private async Task RemoveFromMenuAsync()
+    {
+        try
+        {
+            DesktopMenu.Remove();
+            Status = "The DnW Mod Manager was removed from your application menu.";
+        }
+        catch (Exception e)
+        {
+            await ReportErrorAsync("Could not remove the DnW Mod Manager from the application menu", e);
+        }
+        finally
+        {
+            MenuEntry = DesktopMenu.Read();
+        }
+    }
+
+    private async Task<bool> ConfirmGameRunningAsync()
+        => await Ask(
             "Drag'n Wash is currently running. Changing mod files while it is running may cause issues." + Environment.NewLine + Environment.NewLine
             + "Are you sure you want to continue?",
-            "The game is running", MessageBoxButton.OKCancel, MessageBoxImage.Warning) == MessageBoxResult.OK;
+            "The game is running", MessageButtons.OkCancel, MessageIcon.Warning) == MessageResult.Ok;
 
-    private bool ConfirmTrusted(string title, string warning, string subject, string confirmLabel)
-        => !Settings.ShowSafetyWarnings || SafetyWarningDialog.Confirm(title, warning, subject, confirmLabel);
+    private async Task<bool> ConfirmTrustedAsync(string title, string warning, string subject, string confirmLabel)
+        => !Settings.ShowSafetyWarnings || await Dialogs.ConfirmSafetyAsync(title, warning, subject, confirmLabel);
 
-    public void ReportError(string what, Exception e)
+    private Task<MessageResult> Ask(string message, string title, MessageButtons buttons, MessageIcon icon,
+        MessageResult defaultResult = MessageResult.None)
+        => Dialogs.ShowMessageAsync(message, title, buttons, icon, defaultResult);
+
+    public void ReportError(string what, Exception e) => _ = ReportErrorAsync(what, e);
+
+    public async Task ReportErrorAsync(string what, Exception e)
     {
         string message = what + ":" + Environment.NewLine + Environment.NewLine + e.Message;
         Status = what + ".";
 
-        if (e is UnauthorizedAccessException && _gameFolderAccess == FolderAccess.Denied && !Busy)
+        if (e is UnauthorizedAccessException && _gameFolderAccess == FolderAccess.Denied && !Busy && Platform.IsWindows)
         {
-            var answer = MessageBox.Show(
+            var answer = await Ask(
                 message + Environment.NewLine + Environment.NewLine + "The game folder is write-protected. Fix its permissions?",
-                "DnW Mod Manager", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if (answer == MessageBoxResult.Yes) _ = FixAfterErrorAsync();
+                "DnW Mod Manager", MessageButtons.YesNo, MessageIcon.Warning);
+            if (answer == MessageResult.Yes) _ = FixAfterErrorAsync();
             return;
         }
 
-        MessageBox.Show(message, "DnW Mod Manager", MessageBoxButton.OK, MessageBoxImage.Warning);
+        await Ask(message, "DnW Mod Manager", MessageButtons.Ok, MessageIcon.Warning);
     }
 
     public void Dispose()

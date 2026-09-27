@@ -6,3 +6,4 @@ release/
 *.af
 /promo
 *.cm
+tests/

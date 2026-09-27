@@ -1,4 +1,4 @@
-using System.Windows.Media;
+using Avalonia.Media;
 using DnWModManager.Core;
 
 namespace DnWModManager.ViewModels;
@@ -18,7 +18,7 @@ public sealed class DiagnosticViewModel : ObservableObject
 
     public string Title => Diagnostic.Title;
     public string Detail => Diagnostic.Detail;
-    public Brush SeverityBrush => Theme.ForSeverity(Diagnostic.Severity);
+    public IBrush SeverityBrush => Theme.ForSeverity(Diagnostic.Severity);
 
     public string Where => Diagnostic.Path is null || _main.Install is null
         ? null
@@ -98,5 +98,5 @@ public sealed class CatalogListViewModel
         }
     }
 
-    public Brush StatusBrush => Theme.Brush(Source.Error is null ? Theme.Muted : Theme.Warning);
+    public IBrush StatusBrush => Theme.Brush(Source.Error is null ? Theme.Muted : Theme.Warning);
 }

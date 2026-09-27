@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using Microsoft.Win32.SafeHandles;
 
 namespace DnWModManager.Core;
@@ -17,10 +18,11 @@ public static class Elevation
 
     private static bool ReadElevation()
     {
-        try { return Environment.IsPrivilegedProcess; }
+        try { return Platform.IsWindows && Environment.IsPrivilegedProcess; }
         catch { return false; }
     }
 
+    [SupportedOSPlatform("windows")]
     public static async Task<int?> RunElevatedAsync(IEnumerable<string> arguments)
     {
         string executable = Environment.ProcessPath;
@@ -53,6 +55,7 @@ public static class Elevation
         }
     }
 
+    [SupportedOSPlatform("windows")]
     public static SafeAccessTokenHandle OpenStandardUserToken()
     {
         if (!OpenProcessToken(GetCurrentProcess(), TokenQuery, out var own)) return null;

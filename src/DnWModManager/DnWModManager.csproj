@@ -2,28 +2,42 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <UseWPF>true</UseWPF>
     <RootNamespace>DnWModManager</RootNamespace>
     <AssemblyName>DnWModManager</AssemblyName>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+    <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
 
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <PublishReadyToRun>false</PublishReadyToRun>
-    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' == '' Or $(RuntimeIdentifier.StartsWith('win'))">
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(RuntimeIdentifier.StartsWith('linux'))">
+    <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.22" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.22" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.22" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.22" />
     <PackageReference Include="Mono.Cecil" Version="0.11.6" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="Assets\logo.png" />
+    <AvaloniaResource Include="Assets\logo.png" />
+    <AvaloniaResource Include="Assets\app.ico" />
   </ItemGroup>
 
 </Project>

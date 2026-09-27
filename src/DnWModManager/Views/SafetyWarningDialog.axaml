@@ -1,36 +1,23 @@
-<Window x:Class="DnWModManager.Views.SafetyWarningDialog"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="DnWModManager.Views.SafetyWarningDialog"
         Width="480"
         SizeToContent="Height"
-        ResizeMode="NoResize"
+        CanResize="False"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
-        Background="{StaticResource Bg}"
-        UseLayoutRounding="True"
-        TextOptions.TextFormattingMode="Display">
+        Icon="/Assets/app.ico">
 
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
-
-        <Grid Margin="22,22,22,20">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-
+    <Grid RowDefinitions="Auto,Auto">
+        <Grid ColumnDefinitions="Auto,*" Margin="22,22,22,20">
             <Border Width="36"
                     Height="36"
                     CornerRadius="18"
-                    Background="#33E8A33D"
+                    Background="{StaticResource WarningSoft}"
                     VerticalAlignment="Top"
                     Margin="0,0,14,0">
                 <TextBlock Text="!"
                            Foreground="{StaticResource Warning}"
-                           FontFamily="Segoe UI"
                            FontSize="20"
                            FontWeight="Bold"
                            HorizontalAlignment="Center"
@@ -39,7 +26,7 @@
 
             <StackPanel Grid.Column="1">
                 <TextBlock x:Name="WarningText"
-                           Style="{StaticResource Heading}"
+                           Classes="heading"
                            Margin="0,8,0,0"/>
                 <Border Background="{StaticResource SurfaceAlt}"
                         BorderBrush="{StaticResource BorderBrushSoft}"
@@ -48,9 +35,9 @@
                         Padding="10,7"
                         Margin="0,12,0,0">
                     <TextBlock x:Name="SubjectText"
-                               Style="{StaticResource Mono}"/>
+                               Classes="mono"/>
                 </Border>
-                <TextBlock Style="{StaticResource Muted}"
+                <TextBlock Classes="muted"
                            Margin="0,12,0,0"
                            Text="You can turn this warning off in the settings."/>
             </StackPanel>
@@ -63,13 +50,15 @@
                 Padding="22,12">
             <StackPanel Orientation="Horizontal"
                         HorizontalAlignment="Right">
-                <Button Style="{StaticResource SecondaryButton}"
+                <Button x:Name="CancelButton"
+                        Classes="secondary"
                         Content="Cancel"
                         IsCancel="True"
                         IsDefault="True"
-                        Margin="0,0,8,0"/>
+                        Margin="0,0,8,0"
+                        Click="OnCancel"/>
                 <Button x:Name="ConfirmButton"
-                        Style="{StaticResource PrimaryButton}"
+                        Classes="primary"
                         Click="OnConfirm"/>
             </StackPanel>
         </Border>

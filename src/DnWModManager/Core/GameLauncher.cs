@@ -18,16 +18,28 @@ public static class GameLauncher
     public static Process Launch(GameInstall install, LaunchMode mode, string extraArguments = null)
     {
         if (!install.Exists)
-            throw new FileNotFoundException("DragNWash.exe was not found in " + install.GameDirectory + ".");
+            throw new FileNotFoundException(install.ExeName + " was not found in " + install.GameDirectory + ".");
+
+        if (install.RunsThroughProton && install.Source != InstallSource.Steam)
+            throw new InvalidOperationException("Please use Proton for the Windows version: " + GameInstall.ProtonLaunchOption + ".");
 
         return EffectiveMode(install, mode) == LaunchMode.Steam ? LaunchViaSteam(install) : LaunchDirect(install, extraArguments);
     }
 
     public static LaunchMode EffectiveMode(GameInstall install, LaunchMode mode)
-        => mode == LaunchMode.Steam && install?.Source == InstallSource.Steam ? LaunchMode.Steam : LaunchMode.Direct;
+    {
+        if (install?.Source != InstallSource.Steam) return LaunchMode.Direct;
+        return mode == LaunchMode.Steam || install.RunsThroughProton ? LaunchMode.Steam : LaunchMode.Direct;
+    }
+
+    public static bool CanLaunchDirectly(GameInstall install) => install is not null && !install.RunsThroughProton;
+
+    public static bool UsesForceD3D11(GameInstall install) => install?.Build == GameBuild.Windows;
 
     private static Process LaunchDirect(GameInstall install, string extraArguments)
     {
+        if (install.Build == GameBuild.Linux) return LaunchLinux(install, extraArguments);
+
         string arguments = ForceD3D11;
         if (!string.IsNullOrWhiteSpace(extraArguments)) arguments += " " + extraArguments.Trim();
 
@@ -42,17 +54,44 @@ public static class GameLauncher
         return Process.Start(startInfo);
     }
 
-    private static Process LaunchViaSteam(GameInstall install)
-        => Process.Start(new ProcessStartInfo
+    private static Process LaunchLinux(GameInstall install, string extraArguments)
+    {
+        bool throughLoader = Platform.IsExecutable(install.DoorstopConfigPath);
+        string arguments = throughLoader ? "\"" + install.ExePath + "\"" : "";
+        if (!string.IsNullOrWhiteSpace(extraArguments)) arguments = (arguments + " " + extraArguments.Trim()).Trim();
+
+        return Process.Start(new ProcessStartInfo
         {
-            FileName = "steam://rungameid/" + GameInstall.SteamAppId,
-            UseShellExecute = true,
+            FileName = throughLoader ? install.DoorstopConfigPath : install.ExePath,
+            Arguments = arguments,
+            WorkingDirectory = install.GameDirectory,
+            UseShellExecute = false,
         });
+    }
+
+    private static Process LaunchViaSteam(GameInstall install)
+    {
+        string url = "steam://rungameid/" + GameInstall.SteamAppId;
+        return Process.Start(Platform.IsWindows ? new ProcessStartInfo { FileName = url, UseShellExecute = true } : Platform.DesktopOpen(url));
+    }
 
     public static bool IsRunning()
     {
-        try { return Process.GetProcessesByName("DragNWash").Length > 0; }
+        try
+        {
+            if (Process.GetProcessesByName("DragNWash").Length > 0) return true;
+            return !Platform.IsWindows && Process.GetProcessesByName("DragNWash.exe").Length > 0;
+        }
         catch { return false; }
+    }
+
+    public static bool StartsLoader(SteamLaunchOptions options, GameInstall install)
+    {
+        if (install?.RequiredLaunchOption is null) return true;
+        string value = options?.Value ?? "";
+        if (install.Build == GameBuild.Linux)
+            return value.Contains(GameInstall.LinuxLauncherName, StringComparison.Ordinal) && value.Contains("%command%", StringComparison.Ordinal);
+        return Regex.IsMatch(value, @"WINEDLLOVERRIDES\s*=\s*[""']?[^""'\s]*winhttp\s*=\s*n", RegexOptions.IgnoreCase);
     }
 
     public static SteamLaunchOptions ReadSteamLaunchOptions()
@@ -106,7 +145,15 @@ public static class GameLauncher
         }
 
         string block = vdf[appMatch.Index..end];
-        var options = Regex.Match(block, "\"LaunchOptions\"\\s*\"([^\"]*)\"", RegexOptions.IgnoreCase);
-        return options.Success ? options.Groups[1].Value : "";
+        var options = Regex.Match(block, "\"LaunchOptions\"\\s*\"((?:\\\\.|[^\"\\\\])*)\"", RegexOptions.IgnoreCase);
+        return options.Success ? UnescapeVdf(options.Groups[1].Value) : "";
     }
+
+    private static string UnescapeVdf(string value)
+        => Regex.Replace(value, @"\\(.)", m => m.Groups[1].Value switch
+        {
+            "n" => "\n",
+            "t" => "\t",
+            var other => other,
+        });
 }

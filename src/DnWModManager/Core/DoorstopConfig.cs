@@ -5,16 +5,20 @@ namespace DnWModManager.Core;
 public sealed class DoorstopConfig
 {
     public const string ExpectedTarget = @"DnWModLoader\DnWModLoader.dll";
+    public const string ExpectedScriptTarget = "DnWModLoader/DnWModLoader.dll";
     public const string ExpectedSearchPath = "DnWModLoader";
 
     private readonly List<string> _lines;
 
     public string Path { get; }
 
+    public bool IsShellScript { get; }
+
     private DoorstopConfig(string path, List<string> lines)
     {
         Path = path;
         _lines = lines;
+        IsShellScript = path.EndsWith(".sh", StringComparison.OrdinalIgnoreCase);
     }
 
     public static DoorstopConfig Load(string path)
@@ -57,32 +61,42 @@ public sealed class DoorstopConfig
 
     public bool RepairForLoader()
     {
-        bool changed = Set("enabled", "true");
-        changed |= Set("target_assembly", ExpectedTarget);
+        bool changed = Set("enabled", IsShellScript ? "1" : "true");
+        changed |= Set("target_assembly", IsShellScript ? ExpectedScriptTarget : ExpectedTarget);
         changed |= Set("dll_search_path_override", ExpectedSearchPath);
         return changed;
     }
 
     public bool Set(string key, string value)
     {
+        string replacement = IsShellScript ? key + "=\"" + value + "\"" : key + " = " + value;
         for (int i = 0; i < _lines.Count; i++)
         {
             if (!IsAssignmentFor(_lines[i], key)) continue;
 
-            string replacement = key + " = " + value;
             if (_lines[i].Trim() == replacement) return false;
             _lines[i] = replacement;
             return true;
         }
 
+        if (IsShellScript)
+        {
+            int body = _lines.Count > 0 && _lines[0].StartsWith("#!", StringComparison.Ordinal) ? 1 : 0;
+            _lines.Insert(body, replacement);
+            return true;
+        }
+
         int general = _lines.FindIndex(l => l.Trim().Equals("[General]", StringComparison.OrdinalIgnoreCase));
-        if (general >= 0) _lines.Insert(general + 1, key + " = " + value);
-        else _lines.Add(key + " = " + value);
+        if (general >= 0) _lines.Insert(general + 1, replacement);
+        else _lines.Add(replacement);
         return true;
     }
 
     public void Save()
-        => File.WriteAllLines(Path, _lines, new UTF8Encoding(false));
+    {
+        if (IsShellScript) File.WriteAllText(Path, string.Join("\n", _lines) + "\n", new UTF8Encoding(false));
+        else File.WriteAllLines(Path, _lines, new UTF8Encoding(false));
+    }
 
     public static void WriteDefault(string path)
     {
@@ -125,7 +139,9 @@ public sealed class DoorstopConfig
         {
             if (!IsAssignmentFor(line, key)) continue;
             int equals = line.IndexOf('=');
-            return line[(equals + 1)..].Trim();
+            string value = line[(equals + 1)..].Trim();
+            if (IsShellScript && value.Length >= 2 && value[0] == '"' && value[^1] == '"') value = value[1..^1];
+            return value;
         }
         return null;
     }
