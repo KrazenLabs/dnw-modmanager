@@ -235,9 +235,9 @@
                                 CommandParameter="Mods"/>
                     </StackPanel>
 
-                    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                  Padding="20,0,14,20">
-                        <ItemsControl ItemsSource="{Binding Mods}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Mods}"
+                                      Margin="20,0,14,20">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Classes="row">
@@ -432,9 +432,9 @@
                         </Grid>
                     </Border>
 
-                    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                  Padding="20,0,14,20">
-                        <ItemsControl ItemsSource="{Binding Issues}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Issues}"
+                                      Margin="20,0,14,20">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Classes="row">
@@ -516,9 +516,9 @@
                         </StackPanel>
                     </Border>
 
-                    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                  Padding="20,0,14,20">
-                        <ItemsControl ItemsSource="{Binding Available}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Available}"
+                                      Margin="20,0,14,20">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Classes="row">
@@ -637,9 +637,9 @@
                 </DockPanel>
 
                 <ScrollViewer IsVisible="{Binding IsSettingsPage}"
-                              VerticalScrollBarVisibility="Auto"
-                              Padding="20,18,14,20">
-                    <StackPanel MaxWidth="760"
+                              VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="20,18,14,20"
+                                MaxWidth="760"
                                 HorizontalAlignment="Left">
 
                         <Border Classes="card"
