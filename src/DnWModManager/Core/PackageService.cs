@@ -272,10 +272,11 @@ public sealed class PackageService : IDisposable
 
         foreach (var entry in archive.Entries)
         {
-            if (string.IsNullOrEmpty(entry.Name) || entry.FullName.EndsWith('/') || entry.FullName.EndsWith('\\')) continue;
+            string name = entry.FullName.Replace('\\', '/');
+            if (name.Length == 0 || name.EndsWith('/')) continue;
 
-            string target = Path.GetFullPath(Path.Combine(destination, entry.FullName));
-            if (!target.StartsWith(fullDestination, StringComparison.OrdinalIgnoreCase))
+            string target = Path.GetFullPath(Path.Combine(destination, name));
+            if (!target.StartsWith(fullDestination, Platform.PathComparison))
                 throw new IOException("The archive contains an entry that would be written outside the target folder ("
                                       + entry.FullName + "). Skipping.");
 
